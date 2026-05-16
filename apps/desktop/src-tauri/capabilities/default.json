@@ -5,6 +5,13 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
-    "shell:allow-open"
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-set-focus",
+    "core:event:default",
+    "shell:allow-open",
+    "clipboard-manager:allow-read-text",
+    "clipboard-manager:allow-write-text",
+    "global-shortcut:default"
   ]
 }

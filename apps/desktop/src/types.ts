@@ -90,6 +90,21 @@ export interface ChatResponse {
 }
 
 /**
+ * Rolling per-session stats the status overlay surfaces. Accumulated by
+ * the renderer from each ChatResponse.trace.
+ */
+export interface BackendStats {
+  chats: number;
+  cacheHits: number;
+  totalPromptTokens: number;
+  totalTokensSaved: number;
+  totalNaiveTokens: number;
+  memoriesUsed: number;
+  lastProvider: string | null;
+  warningCount: number;
+}
+
+/**
  * Backend interface the React shell talks to.
  *
  * The dev build (`npm run dev`) wires a `LocalStubBackend` that operates

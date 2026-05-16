@@ -7,7 +7,10 @@ import { MemoryViewer } from "./components/MemoryViewer";
 import { Onboarding } from "./components/Onboarding";
 import { PersonaSettings } from "./components/PersonaSettings";
 import { ProviderSettings } from "./components/ProviderSettings";
+import { QuickRemember } from "./components/QuickRemember";
+import { StatusOverlay } from "./components/StatusOverlay";
 import type {
+  BackendStats,
   ChatResponse,
   ContextTrace,
   DesktopBackend,
@@ -26,6 +29,17 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "provider", label: "Provider" },
 ];
 
+const INITIAL_STATS: BackendStats = {
+  chats: 0,
+  cacheHits: 0,
+  totalPromptTokens: 0,
+  totalTokensSaved: 0,
+  totalNaiveTokens: 0,
+  memoriesUsed: 0,
+  lastProvider: null,
+  warningCount: 0,
+};
+
 export function App() {
   const backend = useMemo<DesktopBackend>(() => createBackend(), []);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -35,6 +49,7 @@ export function App() {
   const [lastTrace, setLastTrace] = useState<ContextTrace | null>(null);
   const [tab, setTab] = useState<TabKey>("chat");
   const [notice, setNotice] = useState<string | null>(null);
+  const [stats, setStats] = useState<BackendStats>(INITIAL_STATS);
 
   useEffect(() => {
     void (async () => {
@@ -55,13 +70,35 @@ export function App() {
     setLastTrace(response.trace);
     const refreshed = await backend.listMemories();
     setMemories(refreshed);
+    setStats((prev) => {
+      const compiled = response.trace.prompt_tokens_estimated;
+      const saved = response.trace.tokens_saved_estimated;
+      const naive = compiled + saved;
+      // Treat the in-memory backend's cache_hit info as 0 for now (no
+      // semantic cache in the stub). When the Gateway-backed mode ships,
+      // we can read response.trace.cache_hit from the API.
+      return {
+        chats: prev.chats + 1,
+        cacheHits: prev.cacheHits,
+        totalPromptTokens: prev.totalPromptTokens + compiled,
+        totalTokensSaved: prev.totalTokensSaved + saved,
+        totalNaiveTokens: prev.totalNaiveTokens + naive,
+        memoriesUsed: prev.memoriesUsed + response.trace.selected_memories.length,
+        lastProvider: response.provider,
+        warningCount: prev.warningCount + response.trace.warnings.length,
+      };
+    });
     return response;
   }
 
   async function handleSaveMemory(text: string) {
-    await backend.saveMemory({ text });
-    setMemories(await backend.listMemories());
-    setNotice("Memory saved.");
+    try {
+      await backend.saveMemory({ text });
+      setMemories(await backend.listMemories());
+      setNotice("Memory saved.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : String(error));
+    }
   }
 
   async function handleForget(id: string) {
@@ -100,9 +137,7 @@ export function App() {
       <header className="app-header">
         <div className="brand">
           <img src="/logo.png" alt="" className="brand-mark" />
-          <span className="brand-tagline">
-            Personal AI Runtime
-          </span>
+          <span className="brand-tagline">Armor for your AI tools</span>
         </div>
         <nav className="tabs" aria-label="Sections">
           {TABS.map((entry) => (
@@ -146,7 +181,11 @@ export function App() {
           />
         )}
         {tab === "memories" && (
-          <MemoryViewer memories={memories} onForget={handleForget} onSave={handleSaveMemory} />
+          <MemoryViewer
+            memories={memories}
+            onForget={handleForget}
+            onSave={handleSaveMemory}
+          />
         )}
         {tab === "context" && <ContextPreview trace={lastTrace} />}
         {tab === "persona" && (
@@ -156,6 +195,14 @@ export function App() {
           <ProviderSettings provider={provider} onSave={handleSetProvider} />
         )}
       </main>
+
+      <StatusOverlay
+        stats={stats}
+        memoryCount={memories.length}
+        providerLabel={stats.lastProvider ?? provider?.label ?? null}
+      />
+
+      <QuickRemember onSave={handleSaveMemory} />
     </div>
   );
 }
