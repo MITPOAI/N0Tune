@@ -2,6 +2,41 @@
 
 All notable changes to N0Tune will be documented here.
 
+## 0.1.0 - 2026-05-17
+
+First tagged release. The "armor for your AI tools" framing replaces the
+earlier "Personal AI Runtime" pitch — the Desktop chat is now a fallback
+and the headline integrations are MCP (Claude / Cursor / Codex CLI) +
+the OpenAI-compatible Gateway proxy + the tray-hotkey path for any other
+tool. Full release notes in [docs/releases/v0.1.0.md](docs/releases/v0.1.0.md).
+
+### Highlights
+
+- Reframe: README + product-direction + how-it-works + editions
+  restructured around "armor not warrior." `docs/wire-to-codex-cli.md`
+  and `docs/wire-to-gemini-cli.md` ship as first-class integration
+  docs.
+- New `n0tune compile <message>` CLI subcommand for tools (Gemini CLI,
+  vim, anything) that accept a system prompt as text/file.
+- `scripts/gen-icons.py` regenerates icons + favicons from
+  `img/logo-s2.png`.
+- Desktop tray icon + global hotkey (`Cmd+Shift+Space` mac,
+  `Alt+Space` elsewhere). Quick-remember overlay + status overlay.
+  Window close hides to tray instead of quitting.
+- Rust-side SQLite (`apps/desktop/src-tauri/src/storage.rs`) + OS
+  keychain (`secrets.rs`). Desktop installer is now self-contained;
+  the renderer `TauriBackend` routes memory + provider keys through
+  the Rust runtime.
+- Continual-learning loop: `POST /v1/memories/consolidate` clusters
+  similar memories and collapses them into a denser summary. New
+  `n0tune memory consolidate [--dry-run]` CLI subcommand.
+
+### Smoke at tag time
+
+- 93 Python tests, 6 Node workspaces typecheck + test green.
+- `mypy --strict`, `ruff`, `eslint --max-warnings=0` clean.
+- `python -m evals token_savings` reproduces 17.4 %.
+
 ## Unreleased
 
 ### Added
