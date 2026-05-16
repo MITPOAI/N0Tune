@@ -13,7 +13,7 @@ test.describe.serial("dashboard end-to-end flows", () => {
   });
 
   test("create a memory and see it in the list", async ({ page }) => {
-    await page.getByRole("tab", { name: "Memories" }).click();
+    await page.getByRole("button", { name: "Memories" }).click();
     await page.locator('form input[name="type"]').fill("preference");
     await page
       .locator('form textarea[name="text"]')
@@ -32,7 +32,7 @@ test.describe.serial("dashboard end-to-end flows", () => {
   });
 
   test("update the style profile", async ({ page }) => {
-    await page.getByRole("tab", { name: "Style" }).click();
+    await page.getByRole("button", { name: "Style" }).click();
     await page.locator('form input[name="tone"]').fill("crisp");
     await page.locator('form input[name="depth"]').fill("high");
     await page
@@ -46,7 +46,7 @@ test.describe.serial("dashboard end-to-end flows", () => {
   });
 
   test("index a document and preview compiled context", async ({ page }) => {
-    await page.getByRole("tab", { name: "Documents" }).click();
+    await page.getByRole("button", { name: "Documents" }).click();
     await page
       .locator('form input[name="title"]')
       .fill("E2E architecture note");
@@ -59,7 +59,7 @@ test.describe.serial("dashboard end-to-end flows", () => {
     await page.getByRole("button", { name: /index document/i }).click();
     await expect(page.getByText("E2E architecture note").first()).toBeVisible();
 
-    await page.getByRole("tab", { name: "Context", exact: true }).click();
+    await page.getByRole("button", { name: "Context", exact: true }).click();
     const messageBox = page.locator("form textarea");
     await messageBox.fill("Explain what the N0Tune context compiler does.");
     await page.getByRole("button", { name: /compile context/i }).click();
@@ -76,7 +76,7 @@ test.describe.serial("dashboard end-to-end flows", () => {
   test("Context Lab compares two users with the same question", async ({
     page,
   }) => {
-    await page.getByRole("tab", { name: "Context Lab" }).click();
+    await page.getByRole("button", { name: "Context Lab" }).click();
     await page.getByLabel("User A id").fill(`${uniqueUser}_a`);
     await page.getByLabel("User B id").fill(`${uniqueUser}_b`);
     await page
@@ -108,11 +108,11 @@ test.describe.serial("dashboard end-to-end flows", () => {
       },
     });
 
-    await page.getByRole("tab", { name: "Cache" }).click();
+    await page.getByRole("button", { name: "Cache" }).click();
     await page.getByRole("button", { name: /clear cache/i }).click();
     await page.getByRole("button", { name: /^refresh$/i }).click();
 
-    await page.getByRole("tab", { name: "Overview" }).click();
+    await page.getByRole("button", { name: "Overview" }).click();
     const cacheEntries = page
       .locator("p", { hasText: /^cache entries$/i })
       .locator("xpath=following-sibling::p[1]");

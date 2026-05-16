@@ -473,14 +473,12 @@ export function DashboardApp() {
       <section className="mx-auto max-w-7xl px-4 py-5 sm:px-5 sm:py-6">
         <div
           className="mb-5 flex gap-2 overflow-x-auto pb-1 -mx-1 px-1"
-          role="tablist"
           aria-label="Dashboard sections"
         >
           {tabs.map((item) => (
             <button
               type="button"
-              role="tab"
-              aria-selected={tab === item}
+              aria-current={tab === item ? "page" : undefined}
               className={`shrink-0 rounded-md border px-3 py-2 text-sm font-medium ${
                 tab === item
                   ? "border-ink bg-white text-ink"
