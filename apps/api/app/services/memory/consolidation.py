@@ -37,7 +37,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.models.entities import Memory
 from app.services.context.embedding import cosine_similarity, embed_text
@@ -323,7 +323,7 @@ def should_auto_consolidate(
 
 
 def maybe_consolidate(
-    session_factory,
+    session_factory: sessionmaker[Session],
     *,
     app_id: str,
     user_id: str,
