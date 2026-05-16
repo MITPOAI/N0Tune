@@ -142,12 +142,30 @@ jobs:
           for attempt in $(seq 1 30); do
             if curl -fsS http://localhost:8000/health >/dev/null; then
               echo "API ready"
+              break
+            fi
+            sleep 2
+          done
+          if ! curl -fsS http://localhost:8000/health >/dev/null; then
+            echo "API never became ready"
+            docker compose logs
+            exit 1
+          fi
+
+      - name: Wait for dashboard
+        run: |
+          # The dashboard container has no healthcheck, so `compose --wait`
+          # doesn't block on it. Playwright hits localhost:3000, so we have
+          # to poll the renderer here before kicking off tests.
+          for attempt in $(seq 1 45); do
+            if curl -fsS http://localhost:3000 >/dev/null; then
+              echo "Dashboard ready"
               exit 0
             fi
             sleep 2
           done
-          echo "API never became ready"
-          docker compose logs
+          echo "Dashboard never became ready"
+          docker compose logs dashboard
           exit 1
 
       - name: Run Playwright tests

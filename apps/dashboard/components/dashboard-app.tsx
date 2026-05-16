@@ -453,7 +453,7 @@ export function DashboardApp() {
               draggable={false}
             />
             <span className="hidden text-xs uppercase tracking-wide text-ink/55 sm:inline">
-              Personal AI Runtime
+              Armor for your AI tools
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -463,7 +463,6 @@ export function DashboardApp() {
               type="button"
               className="button"
               onClick={() => void refresh()}
-              aria-label="Refresh data"
             >
               Refresh
             </button>
