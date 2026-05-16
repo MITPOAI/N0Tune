@@ -1,16 +1,25 @@
 # N0Tune Overview
 
-N0Tune turns any AI model into your personal AI - without fine-tuning.
+**Armor for the AI tools you already use** — local memory, token savings,
+and tailored context for Claude Code, Claude Desktop, Cursor, Codex CLI,
+Gemini CLI, ChatGPT, and any OpenAI-compatible client.
 
 It is pronounced "No Tune" and must be written as `N0Tune` with a zero. Package and infrastructure names use `n0tune`.
 
 ## Product Goal
 
-N0Tune is an open-source Personal AI Runtime.
+N0Tune is **augmentation**, not a competing chat app. You keep using
+your AI tool of choice; N0Tune adds a local memory layer, a context
+compiler, a token-savings tracker, and a tray + global-hotkey capture
+surface around it.
 
 The user brings GPT, Claude, Gemini, Qwen, OpenRouter, Ollama, LM Studio, or any OpenAI-compatible endpoint. N0Tune adds local memory, style, files, semantic cache, and context compilation.
 
 Fine-tuning changes model weights. N0Tune keeps the model unchanged and uses context-tuning: fine-tune-like personalization without fine-tuning.
+
+The Desktop chat is the *least* important capability — it's the fallback
+for when nothing else is open. See [`product-direction.md`](product-direction.md)
+for the full "armor not warrior" reframe.
 
 ## Product Parts
 
