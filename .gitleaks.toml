@@ -1,22 +1,30 @@
 # N0Tune Gitleaks configuration.
 #
-# We extend the default Gitleaks ruleset and allowlist:
+# We extend the default Gitleaks ruleset and add allowlists for:
 #   - test directories (the secret-detector tests deliberately ship strings
 #     that look like API keys but aren't);
-#   - placeholder dev keys in env.example / docs;
-#   - lockfiles (npm/yarn/pip-tools mark hashes inside lockfiles can confuse
-#     entropy-based rules).
+#   - placeholder dev keys in env.example / docs / CHANGELOG;
+#   - lockfiles (lockfile hashes confuse entropy-based rules);
+#   - documentation that mentions our own HTTP header by name
+#     (`X-N0Tune-API-Key`) — the generic-api-key rule pattern-matches
+#     the literal "api-key" substring even when no real key is present.
 #
-# Run locally with:  gitleaks detect --config .gitleaks.toml --source . --redact --verbose
+# Run locally:
+#   gitleaks detect --config .gitleaks.toml --source . --redact --verbose
 
 [extend]
 useDefault = true
 
 [allowlist]
-description = "Test fixtures, docs placeholders, and lockfiles."
+description = "Test fixtures, docs placeholders, lockfiles, and our own header name."
+
+# Allowlist scope is the *secret* by default. To match line content too,
+# we set regexTarget = "line" so prose mentioning our header name passes.
+regexTarget = "line"
+
 paths = [
-  '''.*tests?/.*''',
-  '''.*test_.*\.py''',
+  '''(?i).*tests?/.*''',
+  '''(?i).*test_.*\.py''',
   '''.*\.test\.(ts|tsx|js|jsx|mjs|mts)$''',
   '''.*\.spec\.(ts|tsx|js|jsx|mjs|mts)$''',
   '''package-lock\.json$''',
@@ -25,13 +33,14 @@ paths = [
   '''poetry\.lock$''',
   '''Cargo\.lock$''',
   '''\.env\.example$''',
+  '''CHANGELOG\.md$''',
   '''docs/.*\.md$''',
   '''integrations/.*/README\.md$''',
   '''apps/.*/README\.md$''',
   '''packages/.*/README\.md$''',
 ]
 
-# Specific safe placeholders used throughout the repo.
+# Strings that we know are placeholders or names, not secrets.
 regexes = [
   '''replace-with-local-development-key''',
   '''sk-test-only-mock[-A-Za-z0-9]*''',
@@ -39,4 +48,14 @@ regexes = [
   '''sk-AbCdEf0123456789012345_xyz''',
   '''ghp_abcdefghijklmnopqrstuvwx''',
   '''AKIAIOSFODNN7EXAMPLE''',
+  '''X-N0Tune-API-Key''',
+  '''N0TUNE_API_KEY''',
+]
+
+# Stopwords help the entropy-based generic rules skip our own identifiers.
+stopwords = [
+  "n0tune",
+  "N0Tune",
+  "N0TUNE",
+  "x-n0tune-api-key",
 ]

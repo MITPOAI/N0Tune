@@ -1,0 +1,8 @@
+# Gitleaks fingerprints we've reviewed and confirmed are NOT secrets.
+# Format: <commit-sha>:<path>:<rule>:<line>
+# See: https://github.com/gitleaks/gitleaks#gitleaksignore
+
+# CHANGELOG entries that mention the `X-N0Tune-API-Key` HTTP header by name.
+# The generic-api-key rule pattern-matches the literal "api-key" substring;
+# this is documentation prose, not a credential.
+6e8767497695f539f415c4f3ecc2d6b124a16956:CHANGELOG.md:generic-api-key:20

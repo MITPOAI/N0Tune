@@ -79,6 +79,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Build SDKs first so downstream workspace typechecks resolve to
+      # their dist/ types when path mappings aren't in play. Path
+      # mappings cover most cases; this is the defense-in-depth.
+      - name: Build @n0tune/sdk
+        run: npm --workspace packages/sdk-js run build
+
       - name: Lint
         run: npm run lint
 
