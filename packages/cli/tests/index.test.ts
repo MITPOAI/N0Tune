@@ -98,6 +98,36 @@ describe("n0tune CLI", () => {
     expect(body.text).toBe("hello world");
   });
 
+  it("`compile` prints the compiled_context to stdout", async () => {
+    const compiledBody = "System: stub compiled context for tests\nUser message: Explain X.";
+    mockFetch.mockImplementationOnce(() => jsonResponse({ compiled_context: compiledBody }));
+
+    const writes: string[] = [];
+    const stdoutSpy = vi
+      .spyOn(process.stdout, "write")
+      .mockImplementation((chunk: string | Uint8Array) => {
+        writes.push(typeof chunk === "string" ? chunk : Buffer.from(chunk).toString("utf-8"));
+        return true;
+      });
+
+    const code = await runCli(["compile", "Explain", "X."]);
+    stdoutSpy.mockRestore();
+    expect(code).toBe(0);
+    expect(writes.join("")).toContain("System: stub compiled context for tests");
+
+    const [url, init] = mockFetch.mock.calls[0];
+    expect(String(url)).toContain("/v1/context/preview");
+    expect(init?.method).toBe("POST");
+    const body = JSON.parse(init?.body as string);
+    expect(body.message).toBe("Explain X.");
+  });
+
+  it("`compile` errors when no message is provided", async () => {
+    const code = await runCli(["compile"]);
+    expect(code).toBe(1);
+    expect(errors.join("\n")).toContain("missing <message>");
+  });
+
   it("`persona import` rejects a non-n0tune file", async () => {
     const { writeFile } = await import("node:fs/promises");
     const { tmpdir } = await import("node:os");

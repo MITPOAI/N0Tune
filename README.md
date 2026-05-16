@@ -2,20 +2,21 @@
   <img src="img/logo.png" alt="" width="320" />
 </p>
 
-<p align="center"><strong>Turns any AI model into your personal AI — without fine-tuning.</strong></p>
+<p align="center"><strong>Armor for your AI tools.</strong></p>
 
 <p align="center">
-  Bring GPT, Claude, Gemini, Qwen, OpenRouter, Ollama, or any OpenAI-compatible model.<br/>
-  Add local memory, style, files, semantic cache, and a context compiler on top.
+  Local memory, token-savings, and tailored context for Claude Code, Claude Desktop,<br/>
+  Cursor, Codex CLI, Gemini CLI, and any OpenAI-compatible client.
 </p>
 
-<p align="center"><em>Same model. Same question. Personalized answer. No fine-tuning.</em></p>
+<p align="center"><em>Same model. Same question. Personalized answer. Fewer tokens. No fine-tuning.</em></p>
 
 <p align="center">
   <a href="docs/product-direction.md">Direction</a> ·
-  <a href="docs/editions.md">Editions</a> ·
-  <a href="docs/context-tuning.md">Context-tuning</a> ·
-  <a href="docs/providers.md">Providers</a> ·
+  <a href="docs/how-it-works.md">How it works</a> ·
+  <a href="docs/wire-to-claude.md">Wire to Claude</a> ·
+  <a href="docs/wire-to-codex-cli.md">Codex CLI</a> ·
+  <a href="docs/wire-to-gemini-cli.md">Gemini CLI</a> ·
   <a href="docs/roadmap.md">Roadmap</a>
 </p>
 
@@ -25,28 +26,53 @@
 
 ## What N0Tune Is
 
-N0Tune is an open-source Personal AI Runtime. It keeps the model unchanged and makes it feel personal by compiling the right local context around each request.
+N0Tune is **armor for the AI tools you already use**. You keep using Claude
+Code, Cursor, Codex CLI, Gemini CLI, ChatGPT, whatever — and N0Tune adds a
+local memory layer, a context compiler, a token-savings tracker, and a
+status overlay around them.
 
-Fine-tuning changes model weights.
-N0Tune changes the context around the model.
+It is not a replacement chat app. The fallback chat exists for when you
+have nothing else open; it is the *least* important capability.
 
-That pattern is **context-tuning**: local memory + files + style + compact prompt construction. It gives fine-tune-like personalization without fine-tuning.
+### The four canonical surfaces
+
+| You're using…                            | N0Tune adds…                                                                   |
+| ---------------------------------------- | ------------------------------------------------------------------------------ |
+| Claude Code / Claude Desktop / Cursor    | MCP server: 7 tools that read & write your memory, style, persona, files       |
+| Codex CLI                                | Same MCP wiring (Codex supports MCP). See [`docs/wire-to-codex-cli.md`](docs/wire-to-codex-cli.md) |
+| Gemini CLI                               | Compiled-prompt adapter + clipboard hotkey. See [`docs/wire-to-gemini-cli.md`](docs/wire-to-gemini-cli.md) |
+| ChatGPT / any OpenAI-compatible client   | Gateway proxy at `/v1/openai/chat/completions` adds memory before forwarding   |
+| No AI tool open                          | Desktop chat is the fallback                                                   |
+
+### Context-tuning, not fine-tuning
+
+Fine-tuning changes model weights. N0Tune does not.
+
+N0Tune changes the **prompt**. It pulls your relevant memories, your style
+profile, and any retrieved file chunks, fits them into a token budget, and
+sends a compact context to whatever model you chose. Same model. Different
+prompt. Personal answer.
+
+The pattern is called **context-tuning**. See [`docs/context-tuning.md`](docs/context-tuning.md)
+for the honest one-pager.
 
 N0Tune is:
 
-- an open-source personal AI runtime
+- an augmentation layer for existing AI tools (Claude Code, Cursor, Codex CLI…)
 - a local-first AI memory layer
 - a context compiler
-- a desktop companion plan
-- a provider router
-- an MCP bridge
-- an optional API gateway
+- a token-savings + cache instrumentation surface
+- a continual-learning loop (memories summarize and consolidate over time)
+- a desktop tray + global hotkey for cross-tool memory capture
+- an MCP server, an OpenAI-compatible proxy, and a Python/TS SDK
+- open-source, Apache-2.0, no telemetry
 
 N0Tune is not:
 
 - a model
 - a fine-tuning service
 - a hosted model provider
+- a replacement for Claude Code / Cursor / etc.
 - a secret manager
 - a guarantee against hallucinations
 - a system that stores private memory in the cloud by default

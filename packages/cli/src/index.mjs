@@ -25,6 +25,9 @@ const USAGE = `n0tune <command> [args]
 Commands:
   doctor                       Check Gateway + provider + memory health.
   demo                         Run the two-user personalization demo.
+  compile <message>            Print the compiled context for <message> as plain text
+                               (used by the Gemini CLI adapter; works with any tool that
+                               accepts a system prompt from stdin/file).
 
   memory list                  List memories for a user.
   memory add <text>            Save a memory for a user.
@@ -338,6 +341,37 @@ async function runPersona(positional, { flags }) {
   }
 }
 
+async function runCompile(positional, { flags }) {
+  const message = positional.join(" ").trim();
+  if (!message) {
+    console.error("compile: missing <message>");
+    return 1;
+  }
+  const preview = await gatewayRequest("POST", "/v1/context/preview", {
+    flags,
+    body: {
+      app_id: flags.appId,
+      user_id: flags.userId,
+      message,
+      max_context_tokens: 1200,
+    },
+  });
+  const output = String(preview?.compiled_context ?? "");
+  if (!output) {
+    console.error("compile: gateway returned no compiled_context");
+    return 1;
+  }
+  if (flags.out) {
+    await writeFile(flags.out, output, "utf-8");
+    console.error(`wrote ${flags.out} (${output.length} chars)`);
+  } else {
+    process.stdout.write(output);
+    if (!output.endsWith("\n")) process.stdout.write("\n");
+  }
+  return 0;
+}
+
+
 async function runFiles(positional, { flags }) {
   const [verb, folder] = positional;
   if (verb !== "sync" || !folder) {
@@ -395,6 +429,8 @@ export async function runCli(argv) {
       return runDoctor({ flags });
     case "demo":
       return runDemo({ flags });
+    case "compile":
+      return runCompile(rest, { flags });
     case "memory":
       return runMemory(rest, { flags });
     case "persona":
