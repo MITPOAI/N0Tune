@@ -1,6 +1,6 @@
 {
   "name": "@n0tune/mcp-server",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": false,
   "type": "module",
   "description": "MCP stdio server for N0Tune.",

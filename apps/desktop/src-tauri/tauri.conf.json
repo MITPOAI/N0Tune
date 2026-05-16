@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "N0Tune",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "identifier": "dev.n0tune.desktop",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -37,8 +37,8 @@
       "icons/icon.ico"
     ],
     "category": "Productivity",
-    "shortDescription": "Armor for your AI tools — local memory + context for Claude Code, Cursor, Codex CLI, and more.",
-    "longDescription": "N0Tune is armor for the AI tools you already use. It adds a local memory layer, a context compiler, a token-savings tracker, and a tray + global-hotkey capture surface around Claude Code, Claude Desktop, Cursor, Codex CLI, Gemini CLI, and any OpenAI-compatible client. The fallback chat is for when nothing else is open. No fine-tuning, no telemetry, local-first.",
+    "shortDescription": "Fine-tune any AI, without fine-tuning. Local memory + persona + files for the model you choose.",
+    "longDescription": "N0Tune is a context-tuning system. Bring any AI model (OpenAI, Anthropic, Gemini, OpenRouter, Ollama, or any OpenAI-compatible endpoint) and N0Tune adds local memory, a persona profile, indexed files, a semantic cache, and a context compiler that builds a compact, personal prompt per request. Same model, personal answer. Works as a standalone Desktop app or as an integration layer for Claude Code, Cursor, Codex CLI via MCP. No fine-tuning, no telemetry, local-first.",
     "copyright": "Copyright (c) N0Tune contributors. Apache-2.0.",
     "publisher": "N0Tune"
   },

@@ -1,12 +1,14 @@
 # Install N0Tune
 
-N0Tune is **armor for the AI tools you already use** — local memory, token
-savings, and tailored context for Claude Code, Claude Desktop, Cursor,
-Codex CLI, Gemini CLI, ChatGPT, and any OpenAI-compatible client.
+N0Tune is a **context-tuning system** — local memory, a persona profile,
+indexed files, semantic cache, and a context compiler that gives any
+LLM personal context without fine-tuning. Consumable as a standalone
+Desktop app or wired into Claude Code / Cursor / Codex CLI via MCP.
 
 It is **not** distributed via the Microsoft Store or Mac App Store. You
-download installers or build them yourself. No code-signing certificates
-are bundled — see [Signing & trust](#signing--trust) below.
+download installers from the [GitHub releases page](https://github.com/MITPOAI/N0Tune/releases)
+or build them yourself. Binaries are unsigned — see
+[Signing & trust](#signing--trust) below.
 
 ## What you actually install
 

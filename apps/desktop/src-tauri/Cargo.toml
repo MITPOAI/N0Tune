@@ -1,7 +1,7 @@
 [package]
 name = "n0tune-desktop"
-version = "0.1.1"
-description = "N0Tune Desktop — armor for the AI tools you already use."
+version = "0.1.2"
+description = "N0Tune Desktop — fine-tune any AI without fine-tuning."
 authors = ["N0Tune contributors"]
 edition = "2021"
 rust-version = "1.77"

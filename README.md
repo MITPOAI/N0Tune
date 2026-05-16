@@ -2,22 +2,19 @@
   <img src="img/logo.png" alt="" width="320" />
 </p>
 
-<p align="center"><strong>Armor for your AI tools.</strong></p>
+<p align="center"><strong>Fine-tune any AI. Without fine-tuning.</strong></p>
 
 <p align="center">
-  Local memory, token-savings, and tailored context for Claude Code, Claude Desktop,<br/>
-  Cursor, Codex CLI, Gemini CLI, and any OpenAI-compatible client.
+  Bring your model. N0Tune adds local memory, a persona profile, indexed files,<br/>
+  semantic cache, and a context compiler. Same model. Personal answer.
 </p>
-
-<p align="center"><em>Same model. Same question. Personalized answer. Fewer tokens. No fine-tuning.</em></p>
 
 <p align="center">
   <a href="docs/install.md">Install</a> ·
   <a href="docs/product-direction.md">Direction</a> ·
   <a href="docs/how-it-works.md">How it works</a> ·
+  <a href="docs/context-tuning.md">Context-tuning</a> ·
   <a href="docs/wire-to-claude.md">Wire to Claude</a> ·
-  <a href="docs/wire-to-codex-cli.md">Codex CLI</a> ·
-  <a href="docs/wire-to-gemini-cli.md">Gemini CLI</a> ·
   <a href="docs/roadmap.md">Roadmap</a>
 </p>
 
@@ -27,56 +24,45 @@
 
 ## What N0Tune Is
 
-N0Tune is **armor for the AI tools you already use**. You keep using Claude
-Code, Cursor, Codex CLI, Gemini CLI, ChatGPT, whatever — and N0Tune adds a
-local memory layer, a context compiler, a token-savings tracker, and a
-status overlay around them.
+N0Tune is a **context-tuning system**. You bring any model — GPT, Claude,
+Gemini, Qwen, OpenRouter, Ollama, LM Studio, anything OpenAI-compatible —
+and N0Tune adds the personalization layer on top:
 
-It is not a replacement chat app. The fallback chat exists for when you
-have nothing else open; it is the *least* important capability.
+- **Memory** — vector-embedded preferences, facts, projects (per user / per app).
+- **Persona / style profile** — tone, depth, format, things to avoid.
+- **Indexed files (RAG)** — your folders chunked, embedded, retrieved.
+- **Semantic cache** — reuses an answer when a similar prompt was seen before.
+- **Context compiler** — picks the relevant memories + chunks, fits a token budget, builds a compact prompt.
+- **Continual learning** — old similar memories get summarized into denser ones over time.
+- **Provider router** — calls OpenAI / Anthropic / Gemini / any OpenAI-compatible upstream with the compiled prompt.
 
-### The four canonical surfaces
+Fine-tuning changes the model's weights. N0Tune changes the **prompt**.
+Same model. Different prompt. Personal answer. No GPU, no training data,
+no per-provider lock-in.
 
-| You're using…                            | N0Tune adds…                                                                   |
-| ---------------------------------------- | ------------------------------------------------------------------------------ |
-| Claude Code / Claude Desktop / Cursor    | MCP server: 7 tools that read & write your memory, style, persona, files       |
-| Codex CLI                                | Same MCP wiring (Codex supports MCP). See [`docs/wire-to-codex-cli.md`](docs/wire-to-codex-cli.md) |
-| Gemini CLI                               | Compiled-prompt adapter + clipboard hotkey. See [`docs/wire-to-gemini-cli.md`](docs/wire-to-gemini-cli.md) |
-| ChatGPT / any OpenAI-compatible client   | Gateway proxy at `/v1/openai/chat/completions` adds memory before forwarding   |
-| No AI tool open                          | Desktop chat is the fallback                                                   |
+### Two surfaces, one system
 
-### Context-tuning, not fine-tuning
+| You want…                                                  | Use…                                                                            |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| A standalone personal AI on your machine                   | **N0Tune Desktop** — tray + hotkey + chat + memory + file context (Tauri app)   |
+| Personalization inside Claude Code / Cursor / Codex CLI    | **N0Tune MCP server** — 7 tools your AI tool calls                              |
+| A team / app backend                                       | **N0Tune Gateway** — FastAPI server + dashboard + audit logs + RBAC             |
+| To integrate from code                                     | **N0Tune SDKs** — Python + TypeScript, plus LangChain / LlamaIndex / Vercel AI  |
 
-Fine-tuning changes model weights. N0Tune does not.
+Both surfaces are the same system — same context compiler, same memory
+schema. The Desktop talks to the Gateway via local API; the MCP server
+talks to the Gateway via local API; the SDKs talk to the Gateway via
+local API. **The model never sees N0Tune** — it just receives a normal
+prompt with useful context.
 
-N0Tune changes the **prompt**. It pulls your relevant memories, your style
-profile, and any retrieved file chunks, fits them into a token budget, and
-sends a compact context to whatever model you chose. Same model. Different
-prompt. Personal answer.
+N0Tune is **not**:
 
-The pattern is called **context-tuning**. See [`docs/context-tuning.md`](docs/context-tuning.md)
-for the honest one-pager.
-
-N0Tune is:
-
-- an augmentation layer for existing AI tools (Claude Code, Cursor, Codex CLI…)
-- a local-first AI memory layer
-- a context compiler
-- a token-savings + cache instrumentation surface
-- a continual-learning loop (memories summarize and consolidate over time)
-- a desktop tray + global hotkey for cross-tool memory capture
-- an MCP server, an OpenAI-compatible proxy, and a Python/TS SDK
-- open-source, Apache-2.0, no telemetry
-
-N0Tune is not:
-
-- a model
-- a fine-tuning service
-- a hosted model provider
-- a replacement for Claude Code / Cursor / etc.
+- a model or a fine-tuning service
+- a hosted-model provider
 - a secret manager
 - a guarantee against hallucinations
-- a system that stores private memory in the cloud by default
+- a system that stores private memory in the cloud by default (Desktop is
+  local-first; Gateway only persists when you run the server)
 
 ## Product Editions
 

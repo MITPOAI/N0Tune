@@ -10,10 +10,12 @@ abbreviated rules below are what every agent must respect.
 
 ## Project in one line
 
-N0Tune is **armor for AI tools** — a local memory + context compiler +
-token-savings tracker that wraps Claude Code, Cursor, Codex CLI, Gemini
-CLI, and any OpenAI-compatible client. It is **not** a replacement chat
-app; the fallback Desktop chat is the *least* important capability.
+N0Tune is a **context-tuning system** — fine-tune any AI, without
+fine-tuning. Bring any model. N0Tune adds local memory, a persona
+profile, indexed files, semantic cache, and a context compiler. Same
+model, personal answer. Consumable as a standalone Desktop app or as an
+integration layer (MCP / OpenAI-compatible proxy / SDKs) under Claude
+Code, Cursor, Codex CLI, etc.
 
 ## Hard rules
 
@@ -73,6 +75,10 @@ CI is the source of truth — see `.github/workflows/ci.yml`.
 
 ## When you don't know
 
-Don't guess. Ask the user. The project pivoted from "Personal AI Runtime"
-to "armor for AI tools" in May 2026 — if your understanding doesn't match
+Don't guess. Ask the user. The project's current framing is
+**"Fine-tune any AI, without fine-tuning"** — a context-tuning system
+with two equal surfaces (standalone Desktop + integration layer for
+other AI tools). Earlier framings ("Personal AI Runtime", "armor for
+AI tools") were too narrow on one side or the other; current docs put
+context-tuning back at the headline. If your mental model doesn't match
 the README's first paragraph, you're working from stale context.

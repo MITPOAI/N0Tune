@@ -2,6 +2,50 @@
 
 All notable changes to N0Tune will be documented here.
 
+## 0.1.2 - 2026-05-17
+
+A framing + dynamics release. Same product surface as 0.1.1; what
+changes is the **headline** (back to context-tuning), the
+**continual-learning loop** (now dynamic), and the **download path**
+(cross-platform release workflow). Full notes in
+[docs/releases/v0.1.2.md](docs/releases/v0.1.2.md).
+
+### Framing
+
+- **Headline reframe.** v0.1.1's "armor for your AI tools" understated
+  what the system actually delivers. Restored "Fine-tune any AI.
+  Without fine-tuning." as the headline across README,
+  product-direction, overview, editions, how-it-works, install,
+  CLAUDE.md, AGENTS.md, Tauri bundle metadata, and the dogfooding seed
+  memories. Both the standalone Desktop and the integration layer (MCP
+  / OpenAI proxy / SDKs) are framed as first-class surfaces.
+
+### Dynamic consolidation
+
+- **Auto-trigger** on `POST /v1/chat`, `POST /v1/openai/chat/completions`,
+  and `POST /v1/memories` via FastAPI `BackgroundTasks`. The trigger
+  short-circuits cheaply when the user has fewer than 12 active memories
+  or the last summary is younger than the 15-minute cooldown; otherwise
+  it runs the full clustering pass.
+- Trigger conditions live in
+  `app.services.memory.consolidation.should_auto_consolidate`. The
+  background runner is `maybe_consolidate(session_factory, app_id, user_id)`.
+- Consolidation **does not call any provider** by default — the summary
+  is a deterministic concatenation of the cluster members. The
+  provider-backed summary remains opt-in via `summarize=True` on the
+  explicit endpoint, using the same provider you configured for chat.
+- End-to-end smoke against the live stack: 13 similar memories →
+  background pass fires after the 13th write → 1 summary + 2 deprecated,
+  zero LLM tokens spent.
+
+### Release workflow
+
+- New `.github/workflows/release.yml` builds the Tauri bundle on
+  windows-latest, macos-14 (arm64), macos-13 (x64), and ubuntu-22.04 on
+  every `v*` tag push, then uploads every `.exe / .msi / .dmg /
+  .AppImage / .deb` to the matching GitHub Release. v0.1.2 is the first
+  release where pre-built installers are downloadable.
+
 ## 0.1.1 - 2026-05-17
 
 Polish release. Same product surface as 0.1.0, but CI is green, agents

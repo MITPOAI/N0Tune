@@ -1,6 +1,6 @@
 {
   "name": "@n0tune/cli",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "The n0tune CLI: doctor, demo, memory, persona, files, mcp.",
   "type": "module",
   "bin": {

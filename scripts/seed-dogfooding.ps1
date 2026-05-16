@@ -30,14 +30,14 @@ $memories = @(
         app_id = $AppId
         user_id = $UserId
         type = "project"
-        text = "N0Tune is armor for AI tools (Claude Code, Cursor, Codex CLI, Gemini CLI, OpenAI-compatible clients), not a replacement chat app. The fallback Desktop chat is the least important capability."
+        text = "N0Tune is a context-tuning system. Bring any AI model (OpenAI / Anthropic / Gemini / Qwen / OpenRouter / Ollama / LM Studio / OpenAI-compatible). N0Tune adds local memory, persona, indexed files, semantic cache, and a context compiler. Same model, personal answer, no fine-tuning."
         confidence = 1.0
     },
     @{
         app_id = $AppId
         user_id = $UserId
         type = "project"
-        text = "N0Tune is a Context Compiler and AI Memory Gateway. It is not only memory, RAG, cache, or prompt compression."
+        text = "N0Tune has two equal surfaces: a standalone Desktop app (Tauri, local SQLite + OS keychain) AND an integration layer (MCP server, OpenAI-compatible proxy, SDKs) for Claude Code / Cursor / Codex CLI / etc. Both are first-class."
         confidence = 1.0
     },
     @{

@@ -1,0 +1,111 @@
+name: Release
+
+# Builds Tauri installers for Windows, macOS, and Linux on tag push, and
+# attaches them as release assets to the matching GitHub Release.
+#
+# Trigger: push a tag matching `v*` (e.g. `git tag v0.1.2 && git push origin v0.1.2`).
+# The release must already exist (`gh release create v0.1.2 ...` or via the API);
+# this workflow only uploads assets, it does not create the release.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            label: windows-x64
+          - os: macos-14            # arm64 (Apple Silicon)
+            target: aarch64-apple-darwin
+            label: macos-arm64
+          - os: macos-13            # x86_64 (Intel)
+            target: x86_64-apple-darwin
+            label: macos-x64
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            label: linux-x64
+
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.label }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo registry + build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri -> target
+          key: ${{ matrix.label }}
+
+      - name: Install Linux build deps
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libgtk-3-dev \
+            libsoup-3.0-dev \
+            patchelf
+
+      - name: Install Node deps
+        run: npm ci
+
+      # The Tauri CLI invokes `npm run build` in apps/desktop as a
+      # beforeBuildCommand, which compiles the renderer into apps/desktop/dist.
+      # Our top-level @n0tune/sdk workspace must be built first so the
+      # renderer can resolve `@n0tune/sdk` types via the path mapping.
+      - name: Pre-build @n0tune/sdk
+        run: npm --workspace packages/sdk-js run build
+
+      - name: Build Tauri bundle
+        working-directory: apps/desktop
+        run: npx --no-install tauri build --target ${{ matrix.target }}
+
+      # Tauri drops installers under apps/desktop/src-tauri/target/<target>/release/bundle/
+      # in subdirectories per format (nsis, msi, dmg, deb, appimage, ...).
+      - name: Collect installers
+        shell: bash
+        run: |
+          mkdir -p _release_assets
+          bundle_dir="apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle"
+          if [ ! -d "$bundle_dir" ]; then
+            echo "::error::no bundle dir at $bundle_dir"
+            exit 1
+          fi
+          find "$bundle_dir" -type f \
+            \( -name "*.exe" -o -name "*.msi" -o -name "*.dmg" \
+               -o -name "*.AppImage" -o -name "*.deb" -o -name "*.rpm" \) \
+            -exec cp {} _release_assets/ \;
+          ls -la _release_assets/
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: _release_assets/*
+          tag_name: ${{ github.ref_name }}
+          fail_on_unmatched_files: true
+          # Don't create / overwrite the release body — the tag-time release
+          # already has docs/releases/<tag>.md as its body.
+          append_body: false

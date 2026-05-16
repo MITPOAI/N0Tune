@@ -16,15 +16,27 @@ members. When a provider is configured, the optional ``summarize`` flag
 on the API endpoint can call the upstream model for a richer summary; we
 keep that out of this module so the consolidation pass works without an
 API key (and stays cheap in CI).
+
+The pass can be triggered three ways:
+
+1. **Explicit** — ``POST /v1/memories/consolidate`` or the
+   ``n0tune memory consolidate`` CLI.
+2. **Automatic, dynamic** — ``maybe_consolidate`` is called as a
+   background task after every successful chat / memory write. It
+   short-circuits cheaply when the user hasn't accumulated enough
+   similar memories yet, so the trigger only does real work when it's
+   actually needed.
+3. **Scheduled** — call ``maybe_consolidate`` from any cron / scheduler.
 """
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.entities import Memory
@@ -32,6 +44,7 @@ from app.services.context.embedding import cosine_similarity, embed_text
 from app.services.memory.lifecycle import MemoryState
 
 UTC = timezone.utc
+log = logging.getLogger(__name__)
 
 # Cosine similarity above this threshold means two memories are about the
 # same thing. Tuned to the deterministic hash embedding shipped in this
@@ -40,6 +53,14 @@ DEFAULT_SIMILARITY = 0.85
 
 # Don't collapse fewer than 2 memories into a "summary" — that's just a copy.
 MIN_CLUSTER_SIZE = 2
+
+# Auto-trigger thresholds. The dynamic pass short-circuits below these
+# numbers to keep the cost of the every-chat hook close to zero.
+AUTO_MIN_ACTIVE_MEMORIES = 12  # don't bother until the user has this many
+AUTO_COOLDOWN = timedelta(minutes=15)  # min gap between consolidation passes
+
+# Marker we use to identify our own summaries when computing the cooldown.
+SUMMARY_PREFIX = "Consolidated summary of "
 
 
 @dataclass
@@ -243,3 +264,92 @@ def _deprecate_originals(
         memory.state = MemoryState.DEPRECATED.value
         memory.replaced_by_memory_id = summary_id
         memory.updated_at = now
+
+
+# ---------------------------------------------------------------------------
+# auto-trigger
+# ---------------------------------------------------------------------------
+
+
+def should_auto_consolidate(
+    session: Session,
+    *,
+    app_id: str,
+    user_id: str,
+    now: datetime | None = None,
+) -> bool:
+    """Cheap precheck — does this user have enough active memories AND is it
+    long enough since the last consolidation pass?
+
+    Used by the chat + memory write endpoints to short-circuit the
+    background consolidation hook when there's nothing to do, so the
+    auto-trigger costs O(1) database queries on every chat (not the full
+    pairwise similarity sweep ``consolidate`` does).
+    """
+    now = now or datetime.now(UTC)
+
+    active_count = session.scalar(
+        select(func.count())
+        .select_from(Memory)
+        .where(
+            Memory.app_id == app_id,
+            Memory.user_id == user_id,
+            Memory.deleted_at.is_(None),
+            Memory.state.in_(
+                [MemoryState.ACTIVE.value, MemoryState.CONFIRMED.value, MemoryState.CANDIDATE.value]
+            ),
+        )
+    )
+    if (active_count or 0) < AUTO_MIN_ACTIVE_MEMORIES:
+        return False
+
+    # Find the most recent summary memory for this user. If it's newer
+    # than the cooldown, skip.
+    last_summary_at = session.scalar(
+        select(func.max(Memory.created_at))
+        .where(
+            Memory.app_id == app_id,
+            Memory.user_id == user_id,
+            Memory.text.like(f"{SUMMARY_PREFIX}%"),
+        )
+    )
+    if last_summary_at is not None:
+        if last_summary_at.tzinfo is None:
+            last_summary_at = last_summary_at.replace(tzinfo=UTC)
+        if now - last_summary_at < AUTO_COOLDOWN:
+            return False
+
+    return True
+
+
+def maybe_consolidate(
+    session_factory,
+    *,
+    app_id: str,
+    user_id: str,
+) -> ConsolidationReport | None:
+    """Run consolidation in a fresh session if the trigger conditions are met.
+
+    Designed to be called from a FastAPI ``BackgroundTasks`` after the
+    response is sent: takes a session factory (not a session) because
+    the request-scoped session is closed by then. Returns ``None`` when
+    the trigger short-circuited; otherwise the ``ConsolidationReport``.
+    """
+    try:
+        with session_factory() as session:
+            if not should_auto_consolidate(session, app_id=app_id, user_id=user_id):
+                return None
+            report = consolidate(session, app_id=app_id, user_id=user_id)
+            if report.clusters_collapsed:
+                session.commit()
+                log.info(
+                    "auto_consolidate user=%s collapsed=%d active_before=%d active_after=%d",
+                    user_id,
+                    report.clusters_collapsed,
+                    report.active_before,
+                    report.active_after,
+                )
+            return report
+    except Exception:  # pragma: no cover — auto-trigger must never break a chat
+        log.exception("auto_consolidate failed user=%s app=%s", user_id, app_id)
+        return None

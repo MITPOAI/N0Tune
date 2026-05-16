@@ -8,13 +8,17 @@ keeps an agent from wandering off.
 
 ## What this project is
 
-**N0Tune is armor for AI tools, not a replacement chat app.**
+**N0Tune is a context-tuning system.** Fine-tune any AI, without
+fine-tuning.
 
-- A local memory layer + context compiler + token-savings tracker that wraps
-  Claude Code, Claude Desktop, Cursor, Codex CLI, Gemini CLI, and any
-  OpenAI-compatible client.
-- The fallback Desktop chat is the *least* important capability. Don't
-  reframe the project around it.
+- Bring any model (OpenAI / Anthropic / Gemini / Qwen / OpenRouter /
+  Ollama / LM Studio / OpenAI-compatible). N0Tune adds memory, persona,
+  indexed files, semantic cache, and a context compiler — same model,
+  personal answer.
+- **Two equal surfaces:** a standalone Desktop app (Tauri, local-first,
+  SQLite + OS keychain) AND an integration layer (MCP server,
+  OpenAI-compatible proxy, SDKs) for tools like Claude Code that have
+  their own chat UI. Both are first-class.
 - Pronounced "no tune". The display wordmark is the logo; packages are
   `n0tune`, the Python module is `n0tune_core`, the CLI is `n0tune`.
 
@@ -59,7 +63,7 @@ integrations/
   llamaindex/      Python LlamaIndex integration.
   markdown-folder/ Python loader for plain Markdown folders.
 docs/
-  product-direction.md      Read first for "armor not warrior" framing.
+  product-direction.md      Read first for "fine-tune any AI without fine-tuning" framing.
   how-it-works.md           Per-tool integration scenarios.
   wire-to-claude.md         MCP wiring for Claude Desktop / Code / Cursor.
   wire-to-codex-cli.md      MCP wiring for Codex CLI.
@@ -123,8 +127,12 @@ gitleaks detect --config .gitleaks.toml --source . --redact --verbose
 
 ## What to do when you're confused
 
-1. Re-read `docs/product-direction.md`. The framing changed from
-   "Personal AI Runtime" to "armor for your AI tools" in 2026-05.
+1. Re-read `docs/product-direction.md`. The current framing is
+   **"Fine-tune any AI, without fine-tuning"** — a context-tuning
+   system with two equal surfaces (standalone Desktop + integration
+   layer for other AI tools). Earlier framings ("Personal AI Runtime"
+   in v0.1.0, "armor for AI tools" in v0.1.1) were over- or
+   under-pivots; v0.1.2 puts the headline back on context-tuning.
 2. Re-read `README.md` first 60 lines.
 3. Check `docs/release-checklist.md`.
 4. If still confused, ask the user — don't guess and don't reframe the

@@ -1,8 +1,8 @@
 {
   "name": "@n0tune/desktop",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
-  "description": "N0Tune Desktop — armor for the AI tools you already use.",
+  "description": "N0Tune Desktop — fine-tune any AI without fine-tuning.",
   "type": "module",
   "scripts": {
     "dev": "vite",

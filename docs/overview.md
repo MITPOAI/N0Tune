@@ -1,25 +1,34 @@
 # N0Tune Overview
 
-**Armor for the AI tools you already use** — local memory, token savings,
-and tailored context for Claude Code, Claude Desktop, Cursor, Codex CLI,
-Gemini CLI, ChatGPT, and any OpenAI-compatible client.
+**Fine-tune any AI. Without fine-tuning.**
 
-It is pronounced "No Tune" and must be written as `N0Tune` with a zero. Package and infrastructure names use `n0tune`.
+N0Tune is a context-tuning system. Bring any model — GPT, Claude,
+Gemini, Qwen, OpenRouter, Ollama, LM Studio, anything OpenAI-compatible
+— and N0Tune adds the personalization layer on top: local memory, a
+persona profile, indexed files, a semantic cache, and a context
+compiler that fits all of it into a token budget per request.
+
+It is pronounced "No Tune" and must be written as `N0Tune` with a zero.
+Package and infrastructure names use `n0tune`.
 
 ## Product Goal
 
-N0Tune is **augmentation**, not a competing chat app. You keep using
-your AI tool of choice; N0Tune adds a local memory layer, a context
-compiler, a token-savings tracker, and a tray + global-hotkey capture
-surface around it.
+Fine-tuning changes model weights. That's expensive, slow, locks you
+into a provider, and needs training data + GPU access. N0Tune doesn't
+touch the model. It changes the **prompt** — picking the relevant
+memories + chunks + persona for the current question, fitting them into
+a small context window, and routing the result to whatever model you
+chose.
 
-The user brings GPT, Claude, Gemini, Qwen, OpenRouter, Ollama, LM Studio, or any OpenAI-compatible endpoint. N0Tune adds local memory, style, files, semantic cache, and context compilation.
+The system is consumable from two surfaces, both first-class:
 
-Fine-tuning changes model weights. N0Tune keeps the model unchanged and uses context-tuning: fine-tune-like personalization without fine-tuning.
+- **Standalone:** the N0Tune Desktop app — your personal AI on your
+  machine. Tray + hotkey + chat + memory + files.
+- **As a layer under other AI tools:** the MCP server, OpenAI-compatible
+  proxy, and SDKs let Claude Code, Cursor, Codex CLI, ChatGPT-shaped
+  clients, and your own code use the same memory + compiler.
 
-The Desktop chat is the *least* important capability — it's the fallback
-for when nothing else is open. See [`product-direction.md`](product-direction.md)
-for the full "armor not warrior" reframe.
+See [`product-direction.md`](product-direction.md) for the full pitch.
 
 ## Product Parts
 

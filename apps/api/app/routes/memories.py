@@ -1,14 +1,15 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.session import get_session
+from app.db.session import get_session, get_session_factory
 from app.models.entities import Memory
 from app.schemas.api import DeleteResponse, MemoryCreate, MemoryResponse, MemoryUpdate
 from app.services.context.embedding import cosine_similarity, embed_text
 from app.services.memory.consolidation import consolidate as run_consolidate
+from app.services.memory.consolidation import maybe_consolidate
 from app.services.security.audit import record_audit
 from app.services.security.auth import authorize_app, ensure_user
 from app.services.security.permissions import Permission, require_permission
@@ -21,6 +22,7 @@ UTC = timezone.utc
 @router.post("", response_model=MemoryResponse, status_code=status.HTTP_201_CREATED)
 async def create_memory(
     payload: MemoryCreate,
+    background_tasks: BackgroundTasks,
     session: Session = Depends(get_session),
     x_n0tune_api_key: str | None = Header(default=None),
     authorization: str | None = Header(default=None),
@@ -56,6 +58,13 @@ async def create_memory(
     )
     session.commit()
     session.refresh(memory)
+    # Dynamic consolidation — see services/memory/consolidation.py.
+    background_tasks.add_task(
+        maybe_consolidate,
+        get_session_factory(),
+        app_id=payload.app_id,
+        user_id=payload.user_id,
+    )
     return MemoryResponse.model_validate(memory)
 
 

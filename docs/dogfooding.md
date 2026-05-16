@@ -5,12 +5,14 @@ Gateway because that's the easiest end-to-end proving ground; the same
 behaviors are moving behind `packages/core` so Desktop can reuse them
 locally without Docker.
 
-Since the **armor** reframe (May 2026), the seed pass indexes the docs
-that explain the project to other AI tools — `product-direction.md`,
-`how-it-works.md`, `install.md`, `wire-to-*.md`, `CLAUDE.md`, `AGENTS.md`
-— plus the `context-compiler.md` reference. That way, when you ask any
-MCP-wired client "what is N0Tune?", the answer comes back framed
-correctly (armor, not chat app).
+Since v0.1.2 the seed pass indexes the docs that explain the project
+to other AI tools — `product-direction.md`, `how-it-works.md`,
+`install.md`, `wire-to-*.md`, `CLAUDE.md`, `AGENTS.md` — plus the
+`context-compiler.md` reference. That way, when you ask any MCP-wired
+client "what is N0Tune?", the answer comes back framed correctly: a
+context-tuning system that gives any LLM your personal context without
+fine-tuning, consumable as a standalone Desktop app or as an
+integration layer.
 
 ## Why Gateway Dogfooding Still Matters
 
@@ -42,14 +44,14 @@ python -m evals token_savings
 
 What each step does:
 
-1. `seed-dogfooding.ps1` posts the armor-framed project memories
+1. `seed-dogfooding.ps1` posts the context-tuning project memories
    (Apache-2.0, zero telemetry, no hardcoded model, Windows/macOS/Linux
-   only, fallback chat is the *least* important capability) and indexes
-   the docs listed above. The script computes a content hash per doc so
-   re-running it skips duplicate uploads. It also fires three context
-   previews ("how does N0Tune compile context?", "what is N0Tune and how
-   is it different from a chat app?", "how do I wire N0Tune to Claude
-   Code?") so you can eyeball what the compiler returns end-to-end.
+   only, both Desktop and integration surfaces are first-class) and
+   indexes the docs listed above. The script computes a content hash per
+   doc so re-running it skips duplicate uploads. It also fires three
+   context previews ("how does N0Tune compile context?", "what is N0Tune
+   and how does it work without fine-tuning?", "how do I wire N0Tune to
+   Claude Code?") so you can eyeball what the compiler returns end-to-end.
 2. `smoke-mvp.ps1` round-trips health, memory create/list, style profile, document upload, injection scoring, context preview, chat, and cache. Each run uses a fresh `user_id`.
 3. `python -m evals token_savings` runs the implemented token-savings eval. See [benchmarks.md](benchmarks.md).
 

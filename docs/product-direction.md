@@ -1,60 +1,84 @@
 # Product direction
 
-N0Tune is **armor for the AI tools you already use** — Claude Code, Claude
-Desktop, Cursor, Codex CLI, Gemini CLI, ChatGPT — not a replacement chat app.
-This page captures the framing so contributors and users know exactly what
-N0Tune is for.
+N0Tune is a **context-tuning system**: it gives any AI model your personal
+context — memories, persona, indexed files — *without* fine-tuning the model.
+Same model, same question, personal answer. This page captures the framing
+so contributors and users know exactly what N0Tune is for.
 
 ## The one-line pitch
 
-**Armor for your AI tools.** Local memory, token-savings, and tailored
-context for any model you choose. Same model, same question, personalized
-answer, fewer tokens, no fine-tuning.
+**Fine-tune any AI. Without fine-tuning.**
 
-## Armor not warrior
+Bring your model. N0Tune adds local memory, a persona profile, indexed
+files, semantic cache, and a context compiler. Same model. Personal
+answer. No GPU, no training data, no per-provider lock-in.
 
-An earlier pivot framed N0Tune as a "Personal AI Runtime" with a downloadable
-chat app. That was wrong. People already have Claude Code, Cursor, Codex CLI,
-ChatGPT — they don't want another chat. They want their existing tools to
-feel personal.
+## Two surfaces of one system
 
-So N0Tune is shaped as **armor**:
+The point is the context-tuning system. Where you *consume* it is up to
+you — N0Tune is shipped on both fronts equally:
 
-- **MCP server** — Claude Desktop, Claude Code, Cursor, Codex CLI all support
-  MCP. The N0Tune MCP server exposes seven tools to read/write memories,
-  style, persona, and search the local document index. From inside your
-  existing tool you say "use n0tune to remember…" and it works.
-- **OpenAI-compatible proxy** — clients that don't speak MCP but accept a
-  custom `OPENAI_BASE_URL` (most "ChatGPT-shaped" tools) get the same context
-  injection by pointing at `http://localhost:8000/v1/openai`.
-- **Tray + global hotkey** — for any other tool (Gemini CLI, vim, a text
-  editor, the browser), the desktop tray gives you a global hotkey that
-  captures the clipboard or selection and saves it as a memory.
-- **Status overlay** — a small panel that shows live counters: tokens used,
-  cache hit rate, active memory count, the tailored-vs-naive prompt ratio.
-  Visible from the tray.
-- **Fallback chat** — when nothing else is open, the Desktop window has a
-  chat tab that uses the same memory + compiler. This is *not* the point. It
-  exists so the app is useful in isolation.
+**Standalone (Desktop + Gateway).**
+The N0Tune Desktop is a real downloadable app: tray, global hotkey,
+status overlay, chat, persona settings, memory viewer, context preview.
+It writes to a local SQLite DB and an OS-native keychain — no cloud by
+default. Use the Desktop as your primary AI chat surface and you get a
+genuinely personal AI on your machine.
 
-## How N0Tune works for each scenario
+**As an integration layer.**
+Already living inside Claude Code, Cursor, Codex CLI, or any
+OpenAI-compatible client? Wire N0Tune in via MCP (seven tools) or via
+the OpenAI-compatible proxy (`/v1/openai/chat/completions`). Your
+existing AI tool calls N0Tune for memory + context; you get
+personalization without changing tools.
 
-| Scenario                                                       | Path                                                                                |
-| -------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| Coding in Claude Code                                          | MCP — add `n0tune` to project `.claude/mcp.json`. 7 tools available in `/mcp`.     |
-| Chatting in Claude Desktop                                     | MCP — add `n0tune` to `claude_desktop_config.json`. Restart Claude Desktop.        |
-| Coding in Cursor                                               | MCP — same JSON shape in `~/.cursor/cursor.config.json`.                            |
-| Coding in Codex CLI                                            | MCP — see [`docs/wire-to-codex-cli.md`](wire-to-codex-cli.md).                      |
-| Coding with Gemini CLI                                         | Compiled-prompt adapter — see [`docs/wire-to-gemini-cli.md`](wire-to-gemini-cli.md).|
-| Using ChatGPT / OpenAI SDK / IDE that wants a base URL         | Point `OPENAI_BASE_URL` at `http://localhost:8000/v1/openai`.                       |
-| Plain editor / browser / vim                                   | Tray global hotkey captures selection → saves memory. Recall on next chat.          |
-| Nothing else open                                              | Desktop window chat — fallback only.                                                 |
+Both surfaces share the same memory + persona + cache + compiler. A
+memory you save from the Desktop quick-remember overlay is the same
+memory Claude Code retrieves via MCP.
+
+## What the system actually does, per request
+
+1. **Embed** the user's message into a vector (default `hash`, optional
+   OpenAI-compatible embeddings, optional local `fastembed`).
+2. **Retrieve** the most relevant memories + file chunks for that user
+   (hybrid vector + lexical score, configurable weight).
+3. **Apply** the user's persona / style profile.
+4. **Check** the semantic cache — if a near-identical prompt was seen and
+   none of the dependencies (memory, doc, style) changed, return the
+   cached answer.
+5. **Compile** memories + chunks + style + safety boundary into a compact
+   prompt that fits the token budget, with a trace of why each item was
+   selected.
+6. **Route** the compiled prompt to your configured provider (OpenAI /
+   Anthropic / Gemini / OpenAI-compatible).
+7. **Learn** — promising user-stated preferences are extracted into new
+   memories; similar memories are consolidated into denser summaries
+   over time.
+
+The model never knows N0Tune is in the loop. It receives a normal prompt
+with useful context.
+
+## How you consume N0Tune
+
+| You want…                                                    | Path                                                                                |
+| ------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| A standalone personal AI chat on your machine                | **N0Tune Desktop** — install the Tauri app, configure provider, chat.              |
+| Personalization inside Claude Code                           | **MCP** — add `n0tune` to project `.claude/mcp.json`. 7 tools available in `/mcp`. |
+| Personalization inside Claude Desktop                        | **MCP** — add `n0tune` to `claude_desktop_config.json`. Restart Claude Desktop.    |
+| Personalization inside Cursor                                | **MCP** — same JSON shape in `~/.cursor/cursor.config.json`.                       |
+| Personalization inside Codex CLI                             | **MCP** — see [`wire-to-codex-cli.md`](wire-to-codex-cli.md).                       |
+| Personalization inside Gemini CLI                            | **Adapter** — `n0tune compile` (or the desktop hotkey) — see [`wire-to-gemini-cli.md`](wire-to-gemini-cli.md). |
+| Plug into ChatGPT-style tools that accept a base URL         | **Proxy** — point `OPENAI_BASE_URL` at `http://localhost:8000/v1/openai`.           |
+| Build a team app / multi-user backend                        | **Gateway** — run the FastAPI server; use the dashboard, audit logs, RBAC.          |
+| Integrate from your own code                                 | **SDKs** — Python (`n0tune`), TypeScript (`@n0tune/sdk`); LangChain / LlamaIndex / Vercel adapters. |
+
+Every path uses the same context-tuning system underneath. Memories
+saved from one surface are visible from every other surface.
 
 ## The original promise
 
 The pitch — *tailor context, save tokens, run quicker, tune without
-fine-tuning* — is the same. The shape of the product is what changed.
-Today N0Tune ships:
+fine-tuning* — is the same as day one. Today N0Tune ships every piece:
 
 - **Tailor context**: the Context Compiler picks memories + chunks + style
   per request, fits them in a token budget, and writes a small prompt.
@@ -82,21 +106,23 @@ See [editions.md](editions.md) for the full rundown.
 
 ## What N0Tune is
 
-- An augmentation layer for existing AI tools.
-- A local-first AI memory layer.
-- A context compiler.
-- A token-savings + cache instrumentation surface.
-- A continual-learning loop (memory consolidation in v0.1.0).
-- A desktop tray + global hotkey for cross-tool memory capture.
-- An MCP server, an OpenAI-compatible proxy, and a Python/TS SDK.
-- Open-source, Apache-2.0, no telemetry.
+- A **context-tuning system** for any AI model (no GPU, no training data).
+- A local-first AI **memory** layer (vector + lexical hybrid retrieval).
+- A **persona** profile that shapes tone, depth, format, things to avoid.
+- A **document index** (chunking + embedding + RAG) over your folders.
+- A **semantic cache** that reuses answers across similar prompts.
+- A **context compiler** that fits memory + chunks + persona into a token budget.
+- A **continual-learning loop** that consolidates similar memories over time.
+- A **provider router** for OpenAI / Anthropic / Gemini / OpenAI-compatible.
+- A **Desktop app**, an **MCP server**, an **OpenAI-compatible proxy**, a
+  **CLI**, and Python + TypeScript **SDKs** — all consuming the same system.
+- Open-source, Apache-2.0, **zero telemetry**.
 
 ## What N0Tune is **not**
 
 - Not a model.
 - Not a fine-tuning service.
 - Not a hosted model provider.
-- **Not a replacement for Claude Code / Cursor / Codex CLI / etc.**
 - Not a secret manager (the memory layer rejects secrets, never stores them).
 - Not a guarantee against hallucinations.
 - Not a system that stores private memory in the cloud by default.

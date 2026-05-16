@@ -1,28 +1,31 @@
 # How N0Tune works
 
-A walkthrough by **the tool you're already using**. N0Tune is armor around
-those tools, not a replacement for them — find your tool below and follow
-the section.
+A walkthrough by **how you choose to consume it**. The Desktop app, the
+MCP server, the OpenAI-compatible proxy, and the SDKs all share the
+same context-tuning engine — find your surface below and follow the
+section.
 
 ## TL;DR — what happens behind every prompt
 
 ```
-your AI tool (Claude Code / Cursor / Codex CLI / Gemini CLI / …)
+you (in Desktop / Claude Code / Cursor / Codex CLI / your code / …)
        │
-       │  asks N0Tune to recall + compile context
+       │  message
        ▼
 ┌──────────────────────────────────────────────┐
 │  N0Tune Context Compiler                     │
+│  • embed the message                         │
 │  • retrieve relevant memories                │
 │  • retrieve relevant file chunks             │
-│  • apply your style profile                  │
+│  • apply your persona / style profile        │
 │  • drop high-injection-risk chunks           │
+│  • check the semantic cache                  │
 │  • fit it all into a token budget            │
 └──────────────────────────────────────────────┘
        │
-       │  returns a compact, personalized prompt
+       │  compact, personalized prompt
        ▼
-your AI tool sends that prompt to your model
+provider router (OpenAI / Anthropic / Gemini / OpenAI-compatible)
        │
        ▼
 model answers

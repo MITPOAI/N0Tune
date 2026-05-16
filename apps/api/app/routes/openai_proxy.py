@@ -2,7 +2,7 @@ import json as _json
 from collections.abc import AsyncIterator
 from time import time
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request, status
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -18,6 +18,7 @@ router = APIRouter(prefix="/v1/openai", tags=["openai-compatible"])
 async def openai_chat_completions(
     payload: OpenAIChatRequest,
     request: Request,
+    background_tasks: BackgroundTasks,
     session: Session = Depends(get_session),
     x_n0tune_app_id: str | None = Header(default=None),
     x_n0tune_user_id: str | None = Header(default=None),
@@ -42,6 +43,7 @@ async def openai_chat_completions(
             max_context_tokens=payload.max_context_tokens,
         ),
         request=request,
+        background_tasks=background_tasks,
         session=session,
         x_n0tune_api_key=x_n0tune_api_key,
         authorization=authorization,

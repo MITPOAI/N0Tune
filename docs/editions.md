@@ -1,21 +1,21 @@
 # Editions
 
-N0Tune ships in one repo. Five surfaces, ranked by **how they serve the
-"armor" goal** (augment the AI tools you already use, don't replace them).
+N0Tune ships in one repo. Five surfaces, all consuming the same
+context-tuning system underneath. Pick the one that matches how you
+want to use it.
 
 ## Summary
 
-| #  | Edition           | What it does for you                                                          |
+| #  | Edition           | What it is                                                                    |
 | -- | ----------------- | ----------------------------------------------------------------------------- |
-| 1  | **MCP server**    | Lets Claude Code / Claude Desktop / Cursor / Codex CLI read & write your memory. **This is the headline path.** |
-| 2  | **Gateway**       | The server backing MCP + the OpenAI-compatible proxy + the SDKs.              |
-| 3  | **Desktop**      | Tray icon + global hotkey + status overlay. Cross-tool memory capture. Chat is a fallback. |
+| 1  | **Desktop**       | Downloadable Tauri app — tray + global hotkey + chat + persona + memory + file context, with local SQLite + OS keychain. Your personal AI on your machine. |
+| 2  | **MCP server**    | Stdio server with seven tools. Lets Claude Code / Claude Desktop / Cursor / Codex CLI read + write the same memory + context as Desktop. |
+| 3  | **Gateway**       | FastAPI server + dashboard + Postgres + pgvector + Redis + RBAC + audit logs. Backs the Desktop, MCP, OpenAI-compatible proxy, and SDKs. |
 | 4  | **CLI**          | `n0tune doctor / demo / memory / persona / files / mcp install / compile`.    |
 | 5  | **Core**          | The compiler + interfaces library both Desktop's Rust side and the Gateway consume. |
 
-Notice the ranking: MCP is #1 because that's how N0Tune most often *actually*
-adds value. Desktop sits at #3 because its primary value is the **tray +
-hotkey + overlay** — not chat.
+Memories saved from any surface are visible from every other surface
+(when you're pointed at the same Gateway).
 
 ## #1 — MCP server (`integrations/mcp-server`)
 

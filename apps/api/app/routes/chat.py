@@ -1,14 +1,15 @@
 from hashlib import sha256
 
-from fastapi import APIRouter, Depends, Header, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, Request
 from sqlalchemy.orm import Session
 
-from app.db.session import get_session
+from app.db.session import get_session, get_session_factory
 from app.models.entities import Memory
 from app.schemas.api import ChatContextResponse, ChatRequest, ChatResponse
 from app.services.cache.semantic import lookup_cache, store_cache
 from app.services.context.compiler import compile_context, get_style_profile
 from app.services.context.embedding import embed_text
+from app.services.memory.consolidation import maybe_consolidate
 from app.services.memory.extraction import extract_memory_candidates
 from app.services.observability.langfuse import record_observation
 from app.services.providers.router import generate_answer
@@ -21,6 +22,7 @@ router = APIRouter(prefix="/v1", tags=["chat"])
 async def chat(
     payload: ChatRequest,
     request: Request,
+    background_tasks: BackgroundTasks,
     session: Session = Depends(get_session),
     x_n0tune_api_key: str | None = Header(default=None),
     authorization: str | None = Header(default=None),
@@ -108,6 +110,15 @@ async def chat(
         ),
     )
     _observe_chat(payload, request.state.request_id, response)
+    # Dynamic consolidation — runs after the response is sent. The
+    # trigger short-circuits cheaply when the user hasn't accumulated
+    # enough similar memories yet (see consolidation.should_auto_consolidate).
+    background_tasks.add_task(
+        maybe_consolidate,
+        get_session_factory(),
+        app_id=payload.app_id,
+        user_id=payload.user_id,
+    )
     return response
 
 
