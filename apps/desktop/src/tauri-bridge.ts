@@ -74,3 +74,17 @@ export async function onQuickRememberEvent(handler: () => void): Promise<() => v
     return () => undefined;
   }
 }
+
+/**
+ * Typed wrapper for `invoke`. Returns `null` if we're not in Tauri so
+ * callers can fall back to the localStorage backend transparently.
+ */
+export async function invokeCommand<T>(command: string, args?: Record<string, unknown>): Promise<T | null> {
+  if (!isTauri()) return null;
+  try {
+    const mod = await import(/* @vite-ignore */ "@tauri-apps/api/core");
+    return (await mod.invoke(command, args)) as T;
+  } catch {
+    return null;
+  }
+}

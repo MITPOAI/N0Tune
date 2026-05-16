@@ -1,10 +1,10 @@
+mod secrets;
+mod storage;
+
 use serde::Serialize;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager, WindowEvent};
-
-#[cfg(not(any(target_os = "android", target_os = "ios")))]
-use tauri::Listener;
 
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
@@ -40,6 +40,56 @@ fn show_main_window(app: AppHandle) -> Result<(), String> {
         window.set_focus().map_err(|err| err.to_string())?;
     }
     Ok(())
+}
+
+#[tauri::command]
+fn list_memories() -> Result<Vec<storage::MemoryRow>, String> {
+    storage::list_memories().map_err(|err| err.to_string())
+}
+
+#[derive(serde::Deserialize)]
+struct SaveMemoryArgs {
+    text: String,
+    #[serde(default, rename = "type")]
+    kind: Option<String>,
+    #[serde(default)]
+    confidence: Option<f64>,
+}
+
+#[tauri::command]
+fn save_memory(args: SaveMemoryArgs) -> Result<storage::MemoryRow, String> {
+    storage::save_memory(&args.text, args.kind.as_deref(), args.confidence)
+        .map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+fn forget_memory(id: String) -> Result<(), String> {
+    storage::forget_memory(&id).map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+fn kv_get(key: String) -> Result<Option<String>, String> {
+    storage::kv_get(&key).map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+fn kv_set(key: String, value: String) -> Result<(), String> {
+    storage::kv_set(&key, &value).map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+fn secret_set(provider_id: String, secret: String) -> Result<(), String> {
+    secrets::set(&provider_id, &secret).map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+fn secret_get(provider_id: String) -> Result<Option<String>, String> {
+    secrets::get(&provider_id).map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+fn secret_delete(provider_id: String) -> Result<(), String> {
+    secrets::delete(&provider_id).map_err(|err| err.to_string())
 }
 
 fn handle_tray_event(app: &AppHandle, event: TrayIconEvent) {
@@ -92,6 +142,16 @@ pub fn run() {
     builder
         .setup(|app| {
             let handle = app.handle().clone();
+
+            // Initialize SQLite at the standard per-OS app data path.
+            let app_data_dir = handle
+                .path()
+                .app_data_dir()
+                .expect("OS app data dir is unavailable");
+            let db_path = app_data_dir.join("n0tune.db");
+            if let Err(err) = storage::init(db_path.clone()) {
+                eprintln!("n0tune: storage init failed at {db_path:?}: {err}");
+            }
 
             // Build the tray menu.
             let open_item = MenuItem::with_id(app, "open", "Show N0Tune", true, None::<&str>)?;
@@ -158,7 +218,18 @@ pub fn run() {
                 api.prevent_close();
             }
         })
-        .invoke_handler(tauri::generate_handler![runtime_info, show_main_window])
+        .invoke_handler(tauri::generate_handler![
+            runtime_info,
+            show_main_window,
+            list_memories,
+            save_memory,
+            forget_memory,
+            kv_get,
+            kv_set,
+            secret_set,
+            secret_get,
+            secret_delete,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running N0Tune desktop");
 }
