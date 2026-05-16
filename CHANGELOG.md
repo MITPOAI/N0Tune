@@ -6,6 +6,13 @@ All notable changes to N0Tune will be documented here.
 
 ### Added
 
+- `img/logo.png` is committed and referenced from the top of the README.
+- Issue templates for bugs, features, security reports, and docs issues plus a `config.yml` that disables blank issues and points users at Discussions and the private security policy. ([`.github/ISSUE_TEMPLATE/`](.github/ISSUE_TEMPLATE/))
+- Pull request template with a structured "what / why / tests / docs / security / breaking / checklist" body. ([`.github/pull_request_template.md`](.github/pull_request_template.md))
+- `docs/maintainers.md` — triage cadence, review checklist, release flow, hotfix flow, dependency hygiene.
+- `docs/docs-style-guide.md` — voice, headings, code blocks, naming, examples-talk-to-the-API conventions.
+- `docs/testing.md` — canonical list of test commands, layered surface table, smoke flow, secret scanning, and known gaps.
+- `examples/personalized-rag-demo/README.md` and `evals/README.md` placeholders, each clearly labelled as v1.0 deliverables with the curl-only reproduction users can run today.
 - LangChain integration package at `integrations/langchain/` (`pip install n0tune-langchain`). Ships `N0TuneRetriever(BaseRetriever)` that calls `/v1/context/preview` and returns memories + chunks as `langchain_core.documents.Document` (with `metadata.kind` of `"memory"` or `"chunk"`), plus an `N0TuneMemoryStore` helper for save/search/forget. Wired into CI.
 - LlamaIndex integration package at `integrations/llamaindex/` (`pip install n0tune-llamaindex`). Ships `N0TuneRetriever(BaseRetriever)` returning `NodeWithScore` objects with similarity-scored memories and chunks, plus the same `N0TuneMemoryStore` helper. Wired into CI.
 - Vercel AI SDK integration package at `integrations/vercel-ai-sdk/` (`@n0tune/vercel-ai-sdk`). `createN0TuneProvider()` returns an `@ai-sdk/openai` provider pointed at N0Tune's OpenAI-compatible `/v1/openai` endpoint (streaming, tool use, etc. work unchanged). `buildN0TuneSystemPrompt()` returns the compiled context as a system prompt for use with other Vercel AI SDK providers. `createN0TuneClient()` re-exports the standard `@n0tune/sdk` client.
@@ -48,6 +55,11 @@ All notable changes to N0Tune will be documented here.
 - MCP stdio server.
 - Dogfooding seed script and token-savings report.
 - Tests for isolation, prompt injection, secret rejection, semantic cache hits, cache invalidation after memory changes, proxy, and health.
+
+### Changed
+
+- Secret scanning now runs the **Gitleaks CLI** in a dedicated [`.github/workflows/security.yml`](.github/workflows/security.yml). The previous `gitleaks/gitleaks-action@v2` job is removed from CI because the action requires a paid `GITLEAKS_LICENSE` secret on organization-owned repos and breaks CI for forks. `docs/security.md` documents both paths.
+- `CONTRIBUTING.md` points contributors at the new issue/PR templates and the new docs (`docs/maintainers.md`, `docs/docs-style-guide.md`, `docs/testing.md`).
 
 ### Not yet implemented
 

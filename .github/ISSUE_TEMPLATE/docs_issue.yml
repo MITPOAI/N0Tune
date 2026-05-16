@@ -1,0 +1,55 @@
+name: Documentation issue
+description: A doc, README, or example is wrong, unclear, or missing.
+title: "[Docs] "
+labels: ["documentation", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Docs bugs are bugs. Thanks for taking the time to flag this.
+
+  - type: input
+    id: page
+    attributes:
+      label: Page or file
+      description: Path under `docs/`, `README.md`, or a specific section heading.
+      placeholder: "docs/context-compiler.md or README.md#quickstart"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong or missing?
+      description: Quote the confusing passage if useful.
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggested
+    attributes:
+      label: Suggested fix (optional)
+      description: A sentence, a diff, or a sketch is fine.
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind of issue
+      options:
+        - Incorrect information
+        - Out-of-date with current behavior
+        - Missing example
+        - Confusing wording
+        - Broken link or image
+        - Missing section
+        - Other
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Confirmations
+      options:
+        - label: I confirmed the issue against the latest `main` (or a tagged release).
+          required: true

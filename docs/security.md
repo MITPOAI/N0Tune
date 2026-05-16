@@ -38,10 +38,51 @@ Every memory, style profile, document, cache entry, and context run is scoped by
 
 Tests cover cross-app memory isolation.
 
+## Secret scanning in CI
+
+The repo runs [Gitleaks](https://github.com/gitleaks/gitleaks) on every push
+and PR via [`.github/workflows/security.yml`](../.github/workflows/security.yml).
+We deliberately invoke the **CLI** rather than `gitleaks/gitleaks-action@v2`.
+
+The action requires a paid `GITLEAKS_LICENSE` secret when scanning a
+GitHub **organization**-owned repository and silently fails for forks
+without it. Example failure surface:
+
+```text
+[<org-name>] is an organization. License key is required.
+Error: missing gitleaks license.
+```
+
+If your fork or organization has a Gitleaks license, you can swap the
+CLI workflow for the action by setting `GITLEAKS_LICENSE` as a repository
+secret and using:
+
+```yaml
+- uses: gitleaks/gitleaks-action@v2
+  env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+```
+
+The CLI path is the documented default because it works on personal
+accounts, organizations, and forks without configuration.
+
+Local equivalent:
+
+```bash
+gitleaks detect --source . --redact --verbose
+```
+
+A pre-commit hook is optional; see `.pre-commit-config.yaml` for the
+existing hook set and add Gitleaks if you want local enforcement.
+
+Do not commit fake secrets to test the scanner. Use the documented test
+patterns in [apps/api/app/tests/test_hardening.py](../apps/api/app/tests/test_hardening.py),
+which are crafted to be detected but recognized as non-credentials.
+
 ## Known Gaps
 
-- no production-grade rate limiter yet
 - no full privacy export UI yet
 - no key rotation API yet
-- no streaming proxy safety layer yet
+- streaming proxy fabricates chunks server-side rather than passing through
 - deterministic local embeddings are not sufficient as a production abuse signal

@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="img/logo.png" alt="N0Tune logo" />
+</p>
+
 # N0Tune
 
 N0Tune is pronounced "No Tune". The display name is **N0Tune** with a zero. Package, CLI, Docker, npm, and GitHub names use `n0tune`.
@@ -5,6 +9,9 @@ N0Tune is pronounced "No Tune". The display name is **N0Tune** with a zero. Pack
 > Fine-tune-like personalization without fine-tuning.
 
 Alternative tagline: **Remember more. Prompt less.**
+
+> Same model. Same question. Personalized answer. Fewer tokens. No fine-tuning.
+
 
 N0Tune is an open-source Context Compiler and AI Memory Gateway. It gives LLM apps memory, RAG, semantic cache, style personalization, low-token context building, an OpenAI-compatible proxy, an MCP server, and a transparent dashboard without changing model weights.
 

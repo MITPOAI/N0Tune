@@ -1,0 +1,85 @@
+name: Feature request
+description: Suggest a new feature or improvement for N0Tune.
+title: "[Feature] "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for proposing an idea! Concrete user stories beat abstract suggestions — please describe the problem before the solution.
+
+        N0Tune is deliberately small. Before opening a feature request, check whether the idea fits one of the [roadmap](../../docs/roadmap.md) phases.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What can't you do today? Whose workflow is blocked, and why does it matter?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: A specific change — API endpoint, dashboard tab, config option. Mock JSON or pseudo-code helps.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Workarounds you tried, related tools, or other shapes of the feature you rejected.
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Where does this belong?
+      options:
+        - Context Compiler / scoring
+        - Memory engine
+        - RAG / document ingestion
+        - Semantic cache
+        - OpenAI-compatible proxy
+        - MCP server
+        - SDKs (JS / Python)
+        - Dashboard
+        - Security / prompt injection
+        - Observability
+        - Deployment (Docker / k8s)
+        - Documentation
+        - Other / not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Roadmap phase this targets (best guess)
+      options:
+        - v0.1 (memory + style + context preview)
+        - v0.2 (chat + compiler + token savings)
+        - v0.3 (OpenAI-compatible proxy)
+        - v0.4 (MCP server)
+        - v0.5 (dashboard + dogfooding)
+        - v0.6 (security hardening)
+        - v1.0 (benchmarks + local + connector)
+        - Post-v1 (memory intelligence, permissions, connectors, k8s, etc.)
+        - Not sure
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context (optional)
+      description: Screenshots, links, related issues, prior art.
+
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Confirmations
+      options:
+        - label: I searched for an existing issue or roadmap entry before opening this one.
+          required: true
+        - label: I'm willing to discuss scope and trade-offs before any code is written.
+          required: true

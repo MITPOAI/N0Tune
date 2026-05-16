@@ -36,6 +36,21 @@ Use clear branch names:
 - `security/<short-name>`
 - `chore/<short-name>`
 
+## Filing issues
+
+We accept four kinds of issue, each with its own template under
+[`.github/ISSUE_TEMPLATE/`](.github/ISSUE_TEMPLATE/):
+
+- **Bug report** — something behaves differently from the docs.
+- **Feature request** — a concrete user-facing capability.
+- **Documentation issue** — docs are wrong, unclear, or missing.
+- **Security report** — please **don't** use this template for actual
+  vulnerabilities; follow [SECURITY.md](SECURITY.md) for private
+  disclosure.
+
+GitHub Discussions is the right place for open-ended questions and design
+debates.
+
 ## Pull request rules
 
 - Keep PRs focused.
@@ -45,6 +60,11 @@ Use clear branch names:
 - Do not claim incomplete work is done.
 - Do not commit real secrets.
 - Include screenshots or terminal output when UI or setup changes.
+
+The pull-request template at
+[`.github/pull_request_template.md`](.github/pull_request_template.md)
+auto-populates a structured checklist. Tick boxes you actually ran;
+explicitly mark the rest **N/A** with a one-line reason.
 
 ## Required checks
 
@@ -87,6 +107,12 @@ Any phase change must update:
 - `docs/roadmap.md`
 - `docs/dogfooding.md`
 - relevant API docs
+
+Tone, voice, and formatting conventions live in
+[`docs/docs-style-guide.md`](docs/docs-style-guide.md). Maintainer-facing
+processes (triage, releases, hotfixes) live in
+[`docs/maintainers.md`](docs/maintainers.md). The canonical list of test
+commands lives in [`docs/testing.md`](docs/testing.md).
 
 ## Adding examples
 

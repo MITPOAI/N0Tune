@@ -95,16 +95,9 @@ jobs:
       - name: Validate Compose file
         run: docker compose config
 
-  secrets:
-    name: Secret scan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  # Secret scanning runs in .github/workflows/security.yml using the Gitleaks
+  # CLI. The gitleaks-action variant requires a paid GITLEAKS_LICENSE secret on
+  # organization-owned repos and breaks CI for forks; the CLI does not.
 
   e2e:
     name: Dashboard e2e (Playwright)
