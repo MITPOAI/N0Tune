@@ -6,6 +6,7 @@
   "workspaces": [
     "apps/dashboard",
     "integrations/mcp-server",
+    "integrations/vercel-ai-sdk",
     "packages/sdk-js"
   ],
   "scripts": {

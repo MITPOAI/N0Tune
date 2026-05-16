@@ -1,0 +1,29 @@
+{
+  "name": "@n0tune/vercel-ai-sdk",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Vercel AI SDK integration for N0Tune — OpenAI-compatible provider factory plus context preview helper.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^1.0.0",
+    "@n0tune/sdk": "*",
+    "ai": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "typescript": "^5.6.3",
+    "vitest": "^4.1.6"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

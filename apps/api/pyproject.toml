@@ -27,7 +27,14 @@ dev = [
     "mypy>=1.13,<2.0",
     "pip-audit>=2.10,<3.0",
     "pytest>=9.0.3,<10.0",
+    "respx>=0.21,<1.0",
     "ruff>=0.7,<1.0",
+]
+fastembed = [
+    "fastembed>=0.4,<1.0",
+]
+langfuse = [
+    "langfuse>=2.36,<4.0",
 ]
 
 [tool.setuptools.packages.find]
@@ -52,7 +59,7 @@ strict = true
 warn_unused_configs = true
 
 [[tool.mypy.overrides]]
-module = ["pgvector.*"]
+module = ["pgvector.*", "fastembed", "fastembed.*", "langfuse", "langfuse.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

@@ -25,6 +25,19 @@ class Settings(BaseSettings):
     provider_name: str = "n0tune/dev"
     provider_base_url: str | None = None
     provider_api_key: str | None = None
+    rate_limit_rpm: int = 0
+    rate_limit_window_seconds: int = 60
+    rate_limit_backend: str = "memory"
+    embedding_provider: str = "hash"
+    embedding_model: str = "text-embedding-3-small"
+    embedding_openai_base_url: str = "https://api.openai.com/v1"
+    embedding_openai_api_key: str | None = None
+    embedding_timeout_seconds: int = 30
+    fastembed_model: str = "BAAI/bge-small-en-v1.5"
+    hybrid_lexical_weight: float = 0.0
+    langfuse_public_key: str | None = None
+    langfuse_secret_key: str | None = None
+    langfuse_host: str = "https://cloud.langfuse.com"
 
     model_config = SettingsConfigDict(
         env_file=".env",

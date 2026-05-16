@@ -167,8 +167,22 @@ X-N0Tune-User-ID: user_123
 Authorization: Bearer replace-with-local-development-key
 ```
 
-Streaming is not implemented yet.
+### Streaming
+
+Set `"stream": true` to receive a Server-Sent Events stream of `chat.completion.chunk` deltas. The final event is `data: [DONE]`. The `finish_reason: "stop"` chunk also carries a `n0tune` object with `cache_hit`, `tokens_saved_estimated`, `prompt_tokens_estimated`, and `provider`. Streaming works for both live provider answers and semantic-cache hits.
+
+The current implementation resolves the full answer server-side and then fans the text out into deltas; latency-true pass-through from an upstream streaming provider is a future improvement.
 
 ## Authentication
 
 For the MVP, auth is optional unless a key is supplied or `N0TUNE_REQUIRE_API_KEY=true`. When auth is enabled, N0Tune hashes app API keys and compares the hash. Never store plaintext production keys.
+
+## Rate limiting
+
+All `/v1/*` requests run through a configurable rate-limit middleware.
+
+- `N0TUNE_RATE_LIMIT_RPM` — requests per window per caller. `0` (default) disables rate limiting.
+- `N0TUNE_RATE_LIMIT_WINDOW_SECONDS` — window size in seconds (default `60`).
+- `N0TUNE_RATE_LIMIT_BACKEND` — `memory` (default, single-process) or `redis` (multi-replica safe, uses `N0TUNE_REDIS_URL`).
+
+The caller key is derived from, in order: `Authorization: Bearer <token>`, `X-N0Tune-API-Key`, the first IP in `X-Forwarded-For`, then the socket peer. When the limit is exceeded the response is `429 Too Many Requests` with a `Retry-After` header and JSON body `{"error": "rate_limited", "retry_after": <seconds>}`. Routes outside `/v1/*` (notably `/health`) are not rate-limited.

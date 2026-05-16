@@ -84,9 +84,11 @@ Implemented:
 - token budget fitting
 - token-savings estimate
 - context trace
+- pluggable embedding backend (`hash`, `openai`, `fastembed`) selected via `N0TUNE_EMBEDDING_PROVIDER`; OpenAI calls request `dimensions=384` to fit the existing `Vector(384)` schema
+- optional hybrid retrieval — pure-Python BM25 over candidate texts, blended into the score by `N0TUNE_HYBRID_LEXICAL_WEIGHT` in `[0, 1]` (`0` = pure vector, default)
 
 Limitations:
 
-- deterministic local embeddings
+- BM25 runs in-process over already-fetched candidates rather than via Postgres `tsvector`; fine for current corpora, native FTS is a future improvement
+- OpenAI embedding calls are synchronous and block the event loop briefly; an async client is a future improvement
 - simple token estimation
-- no hybrid search yet

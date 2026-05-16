@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "n0tune"
+version = "0.1.0"
+description = "Python SDK for the N0Tune Context Compiler and AI Memory Gateway."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "N0Tune contributors" }]
+keywords = ["n0tune", "llm", "memory", "rag", "context", "ai"]
+classifiers = [
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "httpx>=0.27,<1.0",
+    "pydantic>=2.6,<3.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/n0tune/n0tune"
+Documentation = "https://github.com/n0tune/n0tune/tree/main/docs"
+Source = "https://github.com/n0tune/n0tune"
+
+[project.optional-dependencies]
+dev = [
+    "mypy>=1.13,<2.0",
+    "pytest>=9.0.3,<10.0",
+    "respx>=0.21,<1.0",
+    "ruff>=0.7,<1.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["n0tune*"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.setuptools.package-data]
+n0tune = ["py.typed"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "S"]
+ignore = ["B008", "S101"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_unused_configs = true
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.db.session import get_session
 from app.schemas.api import ContextPreviewRequest, ContextPreviewResponse
 from app.services.context.compiler import compile_context
+from app.services.observability.langfuse import record_observation
 from app.services.security.auth import authorize_app
 
 router = APIRouter(prefix="/v1/context", tags=["context"])
@@ -25,4 +26,20 @@ async def preview_context(
         cache_hit=False,
     )
     session.commit()
+
+    record_observation(
+        "context.preview",
+        {
+            "app_id": payload.app_id,
+            "user_id": payload.user_id,
+            "request_id": request.state.request_id,
+            "model": payload.model,
+            "prompt_tokens_estimated": response.prompt_tokens_estimated,
+            "tokens_saved_estimated": response.tokens_saved_estimated,
+            "memory_ids": [memory.id for memory in response.selected_memories],
+            "chunk_ids": [chunk.id for chunk in response.selected_chunks],
+            "warnings": response.warnings,
+        },
+    )
+
     return response

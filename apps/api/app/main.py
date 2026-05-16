@@ -3,6 +3,7 @@ from uuid import uuid4
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.config import get_settings
 from app.routes.cache import router as cache_router
@@ -13,6 +14,7 @@ from app.routes.health import router as health_router
 from app.routes.memories import router as memories_router
 from app.routes.openai_proxy import router as openai_proxy_router
 from app.routes.style import router as style_router
+from app.services.security.rate_limit import build_backend, derive_rate_limit_key
 
 settings = get_settings()
 
@@ -21,6 +23,7 @@ app = FastAPI(
     description="Context Compiler and AI Memory Gateway API. Phase 0 exposes health only.",
     version="0.1.0",
 )
+app.state.rate_limit_backend = build_backend(settings)
 
 app.add_middleware(
     CORSMiddleware,
@@ -41,6 +44,29 @@ async def add_request_id(
     response = await call_next(request)
     response.headers[settings.request_id_header] = request_id
     return response
+
+
+@app.middleware("http")
+async def rate_limit(
+    request: Request,
+    call_next: Callable[[Request], Awaitable[Response]],
+) -> Response:
+    current = get_settings()
+    if current.rate_limit_rpm <= 0 or not request.url.path.startswith("/v1/"):
+        return await call_next(request)
+    backend = request.app.state.rate_limit_backend
+    allowed, retry_after = backend.hit(
+        derive_rate_limit_key(request),
+        window_seconds=current.rate_limit_window_seconds,
+        limit=current.rate_limit_rpm,
+    )
+    if not allowed:
+        return JSONResponse(
+            status_code=429,
+            content={"error": "rate_limited", "retry_after": retry_after},
+            headers={"Retry-After": str(retry_after)},
+        )
+    return await call_next(request)
 
 
 app.include_router(health_router)

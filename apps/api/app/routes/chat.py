@@ -10,6 +10,7 @@ from app.services.cache.semantic import lookup_cache, store_cache
 from app.services.context.compiler import compile_context, get_style_profile
 from app.services.context.embedding import embed_text
 from app.services.memory.extraction import extract_memory_candidates
+from app.services.observability.langfuse import record_observation
 from app.services.providers.router import generate_answer
 from app.services.security.auth import authorize_app, ensure_user
 
@@ -49,7 +50,7 @@ async def chat(
                 persist_run=True,
             )
             session.commit()
-            return ChatResponse(
+            cached_response = ChatResponse(
                 answer=cached.answer,
                 provider=f"{cached.model} cache",
                 context=ChatContextResponse(
@@ -62,6 +63,8 @@ async def chat(
                     warnings=cached_preview.warnings,
                 ),
             )
+            _observe_chat(payload, request.state.request_id, cached_response)
+            return cached_response
 
     answer, provider = await generate_answer(
         payload.model, preview.compiled_context, payload.message
@@ -91,7 +94,7 @@ async def chat(
     )
     session.commit()
 
-    return ChatResponse(
+    response = ChatResponse(
         answer=answer,
         provider=provider,
         context=ChatContextResponse(
@@ -103,6 +106,27 @@ async def chat(
             tokens_saved_estimated=preview.tokens_saved_estimated,
             warnings=preview.warnings,
         ),
+    )
+    _observe_chat(payload, request.state.request_id, response)
+    return response
+
+
+def _observe_chat(payload: ChatRequest, request_id: str, response: ChatResponse) -> None:
+    record_observation(
+        "chat",
+        {
+            "app_id": payload.app_id,
+            "user_id": payload.user_id,
+            "request_id": request_id,
+            "model": payload.model,
+            "provider": response.provider,
+            "cache_hit": response.context.cache_hit,
+            "prompt_tokens_estimated": response.context.prompt_tokens_estimated,
+            "tokens_saved_estimated": response.context.tokens_saved_estimated,
+            "memory_ids": [memory.id for memory in response.context.memories_used],
+            "chunk_ids": [chunk.id for chunk in response.context.chunks_used],
+            "warnings": response.context.warnings,
+        },
     )
 
 

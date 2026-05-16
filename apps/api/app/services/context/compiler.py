@@ -5,6 +5,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.models.entities import ContextRun, Document, DocumentChunk, Memory, StyleProfile
 from app.schemas.api import (
     ChunkResponse,
@@ -15,6 +16,7 @@ from app.schemas.api import (
     TraceItem,
 )
 from app.services.context.embedding import cosine_similarity, embed_text, estimate_tokens
+from app.services.context.lexical import bm25_scores, normalize_scores
 from app.services.security.auth import ensure_user
 
 UNTRUSTED_CONTEXT_WARNING = (
@@ -68,6 +70,8 @@ def compile_context(
     ensure_user(session, request.app_id, request.user_id)
     query_embedding = embed_text(request.message)
     now = datetime.now(UTC)
+    settings = get_settings()
+    lexical_weight = max(0.0, min(1.0, settings.hybrid_lexical_weight))
 
     memory_candidates = [
         memory
@@ -76,14 +80,18 @@ def compile_context(
         )
         if _is_active_memory(memory, now)
     ]
+    memory_vector_scores = [
+        cosine_similarity(memory.embedding, query_embedding) * max(memory.confidence, 0.05)
+        for memory in memory_candidates
+    ]
+    memory_scores = _blend_scores(
+        request.message,
+        [memory.text for memory in memory_candidates],
+        memory_vector_scores,
+        lexical_weight,
+    )
     scored_memories = sorted(
-        (
-            (
-                memory,
-                cosine_similarity(memory.embedding, query_embedding) * max(memory.confidence, 0.05),
-            )
-            for memory in memory_candidates
-        ),
+        zip(memory_candidates, memory_scores, strict=False),
         key=lambda item: item[1],
         reverse=True,
     )
@@ -93,15 +101,19 @@ def compile_context(
         .join(Document, Document.id == DocumentChunk.document_id)
         .where(DocumentChunk.app_id == request.app_id, Document.deleted_at.is_(None))
     ).all()
+    chunk_vector_scores = [
+        cosine_similarity(chunk.embedding, query_embedding)
+        * max(0.0, 1.0 - chunk.injection_risk_score)
+        for chunk in chunk_candidates
+    ]
+    chunk_scores = _blend_scores(
+        request.message,
+        [chunk.text for chunk in chunk_candidates],
+        chunk_vector_scores,
+        lexical_weight,
+    )
     scored_chunks = sorted(
-        (
-            (
-                chunk,
-                cosine_similarity(chunk.embedding, query_embedding)
-                * max(0.0, 1.0 - chunk.injection_risk_score),
-            )
-            for chunk in chunk_candidates
-        ),
+        zip(chunk_candidates, chunk_scores, strict=False),
         key=lambda item: item[1],
         reverse=True,
     )
@@ -245,3 +257,22 @@ def _estimate_naive_tokens(
     chunk_text = "\n".join(chunk.text for chunk in chunks)
     repeated_prompt = "You are a helpful assistant. Remember the user preferences and documents."
     return estimate_tokens(f"{repeated_prompt}\n{memory_text}\n{chunk_text}\n{message}")
+
+
+def _blend_scores(
+    message: str,
+    texts: list[str],
+    vector_scores: list[float],
+    lexical_weight: float,
+) -> list[float]:
+    if not vector_scores:
+        return []
+    if lexical_weight <= 0:
+        return vector_scores
+    lexical_raw = bm25_scores(message, texts)
+    lexical = normalize_scores(lexical_raw)
+    vector = normalize_scores(vector_scores)
+    return [
+        lexical_weight * lex + (1.0 - lexical_weight) * vec
+        for vec, lex in zip(vector, lexical, strict=False)
+    ]
