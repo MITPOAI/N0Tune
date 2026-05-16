@@ -35,6 +35,7 @@ jobs:
         shell: bash
         run: |
           gitleaks detect \
+            --config .gitleaks.toml \
             --source . \
             --redact \
             --verbose

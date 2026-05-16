@@ -1,0 +1,42 @@
+# N0Tune Gitleaks configuration.
+#
+# We extend the default Gitleaks ruleset and allowlist:
+#   - test directories (the secret-detector tests deliberately ship strings
+#     that look like API keys but aren't);
+#   - placeholder dev keys in env.example / docs;
+#   - lockfiles (npm/yarn/pip-tools mark hashes inside lockfiles can confuse
+#     entropy-based rules).
+#
+# Run locally with:  gitleaks detect --config .gitleaks.toml --source . --redact --verbose
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Test fixtures, docs placeholders, and lockfiles."
+paths = [
+  '''.*tests?/.*''',
+  '''.*test_.*\.py''',
+  '''.*\.test\.(ts|tsx|js|jsx|mjs|mts)$''',
+  '''.*\.spec\.(ts|tsx|js|jsx|mjs|mts)$''',
+  '''package-lock\.json$''',
+  '''pnpm-lock\.yaml$''',
+  '''yarn\.lock$''',
+  '''poetry\.lock$''',
+  '''Cargo\.lock$''',
+  '''\.env\.example$''',
+  '''docs/.*\.md$''',
+  '''integrations/.*/README\.md$''',
+  '''apps/.*/README\.md$''',
+  '''packages/.*/README\.md$''',
+]
+
+# Specific safe placeholders used throughout the repo.
+regexes = [
+  '''replace-with-local-development-key''',
+  '''sk-test-only-mock[-A-Za-z0-9]*''',
+  '''sk-ant-mock-only[-A-Za-z0-9]*''',
+  '''sk-AbCdEf0123456789012345_xyz''',
+  '''ghp_abcdefghijklmnopqrstuvwx''',
+  '''AKIAIOSFODNN7EXAMPLE''',
+]
