@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "n0tune-core"
+version = "0.1.0"
+description = "Reusable context-tuning core for N0Tune."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "N0Tune contributors" }]
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "mypy>=1.13,<2.0",
+    "pytest>=9.0.3,<10.0",
+    "ruff>=0.7,<1.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["n0tune_core*"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "S"]
+ignore = ["S101"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_unused_configs = true
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

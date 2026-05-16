@@ -8,11 +8,16 @@ WORKDIR /app
 
 RUN addgroup --system n0tune && adduser --system --ingroup n0tune n0tune
 
-COPY pyproject.toml README.md* alembic.ini ./
-COPY app ./app
-COPY alembic ./alembic
+COPY packages/core ./packages/core
+COPY apps/api/pyproject.toml apps/api/README.md* apps/api/alembic.ini ./apps/api/
+COPY apps/api/app ./apps/api/app
+COPY apps/api/alembic ./apps/api/alembic
 
-RUN python -m pip install --upgrade pip && python -m pip install .
+RUN python -m pip install --upgrade pip \
+    && python -m pip install ./packages/core \
+    && python -m pip install ./apps/api
+
+WORKDIR /app/apps/api
 
 USER n0tune
 

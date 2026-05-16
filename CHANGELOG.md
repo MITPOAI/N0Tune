@@ -6,6 +6,23 @@ All notable changes to N0Tune will be documented here.
 
 ### Added
 
+- Phase B Core extraction:
+  - Added installable Python package `packages/core` as `n0tune-core`.
+  - Core now owns shared token estimation, stable hashing, deterministic hash embeddings, cosine similarity, BM25 lexical scoring, prompt-injection scanning, secret detection, context rendering, naive-token baseline estimation, hybrid score blending, and Protocol interface contracts.
+  - Gateway now imports Core for shared context-tuning primitives while keeping FastAPI, SQLAlchemy persistence, provider HTTP calls, and cache dependency checks in `apps/api`.
+  - Added Core unit tests and wired Core into CI, Docker build context, testing docs, and the local `check-mvp.ps1` validation script.
+- Dashboard Context Lab:
+  - Added a no-fake-output product demo that creates or selects two users, seeds different style memories, calls `/v1/context/preview` for both, and compares selected memories, selected document chunks, compiled context, token estimates, token savings, warnings, and context trace side by side.
+  - Added memory deletion, context trace rendering, selected memory/document panels, warning surfacing, and an audit-log tab for owner/admin inspection.
+- Phase A product reframe:
+  - README now positions N0Tune as an open-source Personal AI Runtime: "N0Tune turns any AI model into your personal AI - without fine-tuning."
+  - Added `docs/product-direction.md`, `docs/desktop-architecture.md`, `docs/editions.md`, and `docs/context-tuning.md`.
+  - Reframed the existing FastAPI server/API work as N0Tune Gateway while preserving the current implementation path.
+  - Updated `docs/overview.md` and `docs/architecture.md` so older docs match the Desktop/Core/CLI/MCP/Gateway product shape.
+  - Updated `docs/roadmap.md` with the Desktop/Core/CLI/MCP/Gateway roadmap.
+  - Updated `docs/dogfooding.md` to explain how the current Gateway dogfooding loop supports future Desktop/Core work.
+  - Added architecture placeholders for `apps/desktop`, `packages/core`, `packages/cli`, `personas`, and `examples/desktop-personal-ai`.
+
 - Phase 11 — Permissions + audit log:
   - Four roles (`viewer`, `developer`, `admin`, `owner`) with a permission matrix in `services/security/permissions.py`.
   - New `api_keys` table and `POST/GET/DELETE /v1/api-keys` for minting, listing, and revoking app keys. Plaintext is returned once; only the hash is stored.

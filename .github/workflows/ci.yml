@@ -25,6 +25,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install --upgrade setuptools wheel
+          python -m pip install -e "packages/core[dev]"
           python -m pip install -e "apps/api[dev]"
           python -m pip install -e "packages/sdk-py[dev]"
           python -m pip install -e "integrations/langchain[dev]"
@@ -33,6 +34,7 @@ jobs:
       - name: Lint
         run: |
           ruff check apps/api
+          ruff check packages/core
           ruff check packages/sdk-py
           ruff check integrations/langchain
           ruff check integrations/llamaindex
@@ -40,6 +42,7 @@ jobs:
       - name: Typecheck
         run: |
           mypy apps/api/app
+          mypy packages/core/src
           mypy packages/sdk-py/src
           mypy integrations/langchain/src
           mypy integrations/llamaindex/src
@@ -47,6 +50,7 @@ jobs:
       - name: Test
         run: |
           pytest apps/api/app/tests
+          pytest packages/core/tests
           pytest packages/sdk-py/tests
           pytest integrations/langchain/tests
           pytest integrations/llamaindex/tests

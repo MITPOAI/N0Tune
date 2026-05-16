@@ -1,47 +1,77 @@
 # Architecture
 
-N0Tune is a monorepo with a Python API, Next.js dashboard, TypeScript SDK, MCP server, integrations, examples, and docs.
+This page describes the current Gateway/server architecture and how it should evolve toward Desktop and Core.
 
-## Repository layout
+For product editions, see [editions.md](editions.md). For Desktop planning, see [desktop-architecture.md](desktop-architecture.md).
+
+## Repository Layout
 
 ```text
 n0tune/
-|-- apps/api
-|-- apps/dashboard
-|-- packages/sdk-js
-|-- integrations/mcp-server
-|-- examples
-|-- docs
-`-- scripts
+|-- apps/
+|   |-- api              # current FastAPI Gateway
+|   |-- dashboard        # current server-mode dashboard
+|   `-- desktop          # planned Desktop app placeholder
+|-- packages/
+|   |-- core             # reusable Python context-tuning primitives
+|   |-- cli              # planned n0tune CLI
+|   |-- sdk-js
+|   `-- sdk-py
+|-- integrations/
+|   |-- mcp-server
+|   |-- markdown-folder
+|   |-- langchain
+|   |-- llamaindex
+|   `-- vercel-ai-sdk
+|-- examples/
+|-- personas/
+|-- docs/
+`-- scripts/
 ```
 
-## Runtime
+## Current Gateway Runtime
 
 ```mermaid
 flowchart TD
-    Client["LLM app / SDK"] --> API["FastAPI API"]
+    Client["LLM app / SDK"] --> API["FastAPI Gateway"]
     OpenAI["OpenAI-compatible client"] --> Proxy["/v1/openai/chat/completions"]
     Dashboard["Next.js dashboard"] --> API
     MCP["MCP stdio server"] --> API
     Proxy --> API
-    API --> Auth["App API-key check"]
+    API --> Auth["API key + role checks"]
     Auth --> Compiler["Context Compiler"]
     Compiler --> Memory["Memory Engine"]
     Compiler --> RAG["Document Engine"]
     Compiler --> Style["Style Profile"]
     Compiler --> Cache["Semantic Cache"]
+    Compiler --> Security["Prompt-injection + secret checks"]
     Compiler --> Provider["Provider Router"]
     Memory --> Postgres["Postgres + pgvector"]
     RAG --> Postgres
     Style --> Postgres
     Cache --> Postgres
-    API --> Redis["Redis health / future queue"]
-    Provider --> External["OpenAI-compatible provider"]
+    API --> Redis["Redis health / rate-limit backend"]
+    Provider --> External["OpenAI-compatible provider or dev provider"]
+```
+
+## Target Product Runtime
+
+```mermaid
+flowchart TD
+    Desktop["N0Tune Desktop"] --> Core["N0Tune Core"]
+    CLI["N0Tune CLI"] --> Core
+    MCP["N0Tune MCP"] --> Core
+    Gateway["N0Tune Gateway"] --> Core
+    Core --> Stores["Storage adapters"]
+    Stores --> Local["Desktop: SQLite + local vector store"]
+    Stores --> Server["Gateway: Postgres + pgvector + Redis"]
+    Core --> Router["Provider Router"]
+    Router --> Models["GPT / Claude / Gemini / Qwen / OpenRouter / Ollama"]
 ```
 
 ## Database
 
-Alembic creates:
+Gateway migrations create:
 
 - `apps`
 - `users`
@@ -54,29 +84,50 @@ Alembic creates:
 - `semantic_cache`
 - `context_runs`
 - `feedback_events`
+- `api_keys`
+- `audit_logs`
 
 PostgreSQL migrations enable `pgvector` and create vector columns for memories, document chunks, and semantic cache inputs. Tests use SQLite with the same SQLAlchemy models.
 
+Desktop should not use this server database directly. It should use local SQLite and a local vector store through Core adapters.
+
 ## Context Compiler
+
+The current compiler implementation lives in `apps/api/app/services/context/compiler.py`.
 
 The compiler:
 
-1. embeds the user message with deterministic local embeddings
-2. retrieves user memories scoped by `app_id` and `user_id`
-3. retrieves document chunks scoped by `app_id`
+1. embeds the user message
+2. retrieves scoped memories
+3. retrieves scoped document chunks
 4. loads style profile
 5. excludes high-risk prompt-injection chunks
 6. fits selected context into the token budget
 7. emits a trace and token-savings estimate
+8. supports semantic-cache lookup and storage through the chat path
+
+Phase B has started extracting reusable compiler logic into `packages/core` while keeping Gateway storage in an adapter.
 
 ## Provider Router
 
 The default `n0tune/dev` provider is local and does not call an external LLM. OpenAI-compatible routing is available through environment variables.
 
-## Known limitations
+Future provider routing should support:
 
-- deterministic local embeddings are suitable for MVP smoke tests, not production semantic quality
-- no hybrid BM25 search yet
-- no streaming proxy yet
-- rate limiting is documented but not implemented
-- Redis is included for infrastructure readiness, while MVP cache entries are persisted in Postgres for dependency tracking
+- OpenAI
+- Anthropic Claude
+- Google Gemini
+- Qwen via official API or OpenRouter-compatible route
+- OpenRouter
+- Ollama
+- LM Studio
+- custom OpenAI-compatible endpoints
+
+## Known Gaps
+
+- Desktop app is not implemented yet.
+- Core package extraction is partial: shared token, security, lexical, score-blending, and context-formatting logic is implemented, while storage/provider/cache orchestration remains in Gateway.
+- CLI is not implemented yet.
+- Desktop local SQLite/vector adapters are not implemented yet.
+- Native Postgres `tsvector` retrieval is still future work.
+- OpenAI embedding calls are currently synchronous.
