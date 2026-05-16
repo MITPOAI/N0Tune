@@ -10,8 +10,10 @@ from app.models.entities import Document, DocumentChunk
 from app.schemas.api import ChunkResponse, DeleteResponse, DocumentCreate, DocumentResponse
 from app.services.context.embedding import cosine_similarity, embed_text
 from app.services.rag.chunking import chunk_text
+from app.services.security.audit import record_audit
 from app.services.security.auth import authorize_app, ensure_app
 from app.services.security.injection import analyze_injection_risk
+from app.services.security.permissions import Permission, require_permission
 
 router = APIRouter(prefix="/v1/documents", tags=["documents"])
 UTC = timezone.utc
@@ -24,7 +26,9 @@ async def create_document(
     x_n0tune_api_key: str | None = Header(default=None),
     authorization: str | None = Header(default=None),
 ) -> DocumentResponse:
-    authorize_app(session, payload.app_id, x_n0tune_api_key, authorization)
+    actor_role = authorize_app(session, payload.app_id, x_n0tune_api_key, authorization)
+    if actor_role is not None:
+        require_permission(actor_role, Permission.WRITE_DOCUMENT)
     ensure_app(session, payload.app_id)
     document = Document(
         app_id=payload.app_id,
@@ -56,6 +60,15 @@ async def create_document(
         chunks.append(chunk)
         session.add(chunk)
 
+    record_audit(
+        session,
+        app_id=payload.app_id,
+        action="document.create",
+        resource_type="document",
+        resource_id=document.id,
+        actor_role=actor_role,
+        metadata={"title": payload.title, "chunk_count": len(chunks)},
+    )
     session.commit()
     session.refresh(document)
     return _document_response(document, chunks)
@@ -115,10 +128,22 @@ async def delete_document(
     x_n0tune_api_key: str | None = Header(default=None),
     authorization: str | None = Header(default=None),
 ) -> DeleteResponse:
-    authorize_app(session, app_id, x_n0tune_api_key, authorization)
+    actor_role = authorize_app(session, app_id, x_n0tune_api_key, authorization)
+    if actor_role is not None:
+        require_permission(actor_role, Permission.DELETE_DOCUMENT)
     document = session.get(Document, document_id)
     if document is None or document.app_id != app_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found.")
+
+    record_audit(
+        session,
+        app_id=app_id,
+        action="document.delete",
+        resource_type="document",
+        resource_id=document_id,
+        actor_role=actor_role,
+        metadata={"hard": hard, "title": document.title},
+    )
 
     if hard:
         session.delete(document)

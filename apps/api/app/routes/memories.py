@@ -8,7 +8,9 @@ from app.db.session import get_session
 from app.models.entities import Memory
 from app.schemas.api import DeleteResponse, MemoryCreate, MemoryResponse, MemoryUpdate
 from app.services.context.embedding import cosine_similarity, embed_text
+from app.services.security.audit import record_audit
 from app.services.security.auth import authorize_app, ensure_user
+from app.services.security.permissions import Permission, require_permission
 from app.services.security.secrets import assert_no_secrets
 
 router = APIRouter(prefix="/v1/memories", tags=["memories"])
@@ -22,7 +24,9 @@ async def create_memory(
     x_n0tune_api_key: str | None = Header(default=None),
     authorization: str | None = Header(default=None),
 ) -> MemoryResponse:
-    authorize_app(session, payload.app_id, x_n0tune_api_key, authorization)
+    actor_role = authorize_app(session, payload.app_id, x_n0tune_api_key, authorization)
+    if actor_role is not None:
+        require_permission(actor_role, Permission.WRITE_MEMORY)
     ensure_user(session, payload.app_id, payload.user_id)
     assert_no_secrets(payload.text)
 
@@ -35,8 +39,20 @@ async def create_memory(
         source_message_id=payload.source_message_id,
         embedding=embed_text(payload.text),
         expires_at=payload.expires_at,
+        scope=payload.scope,
     )
     session.add(memory)
+    session.flush()
+    record_audit(
+        session,
+        app_id=payload.app_id,
+        action="memory.create",
+        resource_type="memory",
+        resource_id=memory.id,
+        actor_user_id=payload.user_id,
+        actor_role=actor_role,
+        metadata={"type": memory.type, "confidence": memory.confidence},
+    )
     session.commit()
     session.refresh(memory)
     return MemoryResponse.model_validate(memory)
@@ -96,26 +112,95 @@ async def update_memory(
     x_n0tune_api_key: str | None = Header(default=None),
     authorization: str | None = Header(default=None),
 ) -> MemoryResponse:
-    authorize_app(session, payload.app_id, x_n0tune_api_key, authorization)
+    actor_role = authorize_app(session, payload.app_id, x_n0tune_api_key, authorization)
+    if actor_role is not None:
+        require_permission(actor_role, Permission.WRITE_MEMORY)
     memory = session.get(Memory, memory_id)
     if memory is None or memory.app_id != payload.app_id or memory.deleted_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Memory not found.")
 
+    changes: dict[str, object] = {}
     if payload.text is not None:
         assert_no_secrets(payload.text)
         memory.text = payload.text
         memory.embedding = embed_text(payload.text)
+        changes["text"] = True
     if payload.type is not None:
         memory.type = payload.type
+        changes["type"] = payload.type
     if payload.confidence is not None:
         memory.confidence = payload.confidence
+        changes["confidence"] = payload.confidence
     if payload.expires_at is not None:
         memory.expires_at = payload.expires_at
+        changes["expires_at"] = True
     memory.updated_at = datetime.now(UTC)
 
+    record_audit(
+        session,
+        app_id=payload.app_id,
+        action="memory.update",
+        resource_type="memory",
+        resource_id=memory.id,
+        actor_user_id=memory.user_id,
+        actor_role=actor_role,
+        metadata={"fields": list(changes.keys())},
+    )
     session.commit()
     session.refresh(memory)
     return MemoryResponse.model_validate(memory)
+
+
+@router.post("/{memory_id}/confirm", response_model=MemoryResponse)
+async def confirm_memory(
+    memory_id: str,
+    app_id: str = Query(default="demo"),
+    session: Session = Depends(get_session),
+    x_n0tune_api_key: str | None = Header(default=None),
+    authorization: str | None = Header(default=None),
+) -> MemoryResponse:
+    from app.services.memory.lifecycle import confirm
+
+    actor_role = authorize_app(session, app_id, x_n0tune_api_key, authorization)
+    if actor_role is not None:
+        require_permission(actor_role, Permission.WRITE_MEMORY)
+    memory = session.get(Memory, memory_id)
+    if memory is None or memory.app_id != app_id or memory.deleted_at is not None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Memory not found.")
+    confirm(memory)
+    record_audit(
+        session,
+        app_id=app_id,
+        action="memory.confirm",
+        resource_type="memory",
+        resource_id=memory.id,
+        actor_user_id=memory.user_id,
+        actor_role=actor_role,
+        metadata={},
+    )
+    session.commit()
+    session.refresh(memory)
+    return MemoryResponse.model_validate(memory)
+
+
+@router.get("/export", response_model=list[MemoryResponse])
+async def export_memories(
+    app_id: str = Query(default="demo"),
+    user_id: str = Query(...),
+    session: Session = Depends(get_session),
+    x_n0tune_api_key: str | None = Header(default=None),
+    authorization: str | None = Header(default=None),
+) -> list[MemoryResponse]:
+    """Return every memory for a user including soft-deleted and deprecated rows."""
+    actor_role = authorize_app(session, app_id, x_n0tune_api_key, authorization)
+    if actor_role is not None:
+        require_permission(actor_role, Permission.READ_MEMORY)
+    memories = list(
+        session.scalars(
+            select(Memory).where(Memory.app_id == app_id, Memory.user_id == user_id)
+        )
+    )
+    return [MemoryResponse.model_validate(memory) for memory in memories]
 
 
 @router.delete("/{memory_id}", response_model=DeleteResponse)
@@ -127,10 +212,23 @@ async def delete_memory(
     x_n0tune_api_key: str | None = Header(default=None),
     authorization: str | None = Header(default=None),
 ) -> DeleteResponse:
-    authorize_app(session, app_id, x_n0tune_api_key, authorization)
+    actor_role = authorize_app(session, app_id, x_n0tune_api_key, authorization)
+    if actor_role is not None:
+        require_permission(actor_role, Permission.DELETE_MEMORY)
     memory = session.get(Memory, memory_id)
     if memory is None or memory.app_id != app_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Memory not found.")
+
+    record_audit(
+        session,
+        app_id=app_id,
+        action="memory.delete",
+        resource_type="memory",
+        resource_id=memory_id,
+        actor_user_id=memory.user_id,
+        actor_role=actor_role,
+        metadata={"hard": hard},
+    )
 
     if hard:
         session.delete(memory)

@@ -85,12 +85,67 @@ risking a regression in chat availability.
 
 ## Other observability hooks
 
-- Structured logs include the `X-Request-ID` for every request, set by the
-  request-id middleware and echoed in the response.
-- The `context_runs` table persists what the compiler chose for every
+- **Structured logs** include the `X-Request-ID` for every request, set by
+  the request-id middleware and echoed in the response.
+- **The `context_runs` table** persists what the compiler chose for every
   `/v1/chat` and `/v1/context/preview`. See
-  [`docs/context-compiler.md`](context-compiler.md). This is the local fallback
+  [`context-compiler.md`](context-compiler.md). This is the local fallback
   when Langfuse is disabled.
+- **The `audit_logs` table** captures every mutation. See
+  [`audit-logs.md`](audit-logs.md).
 
 If you want OpenTelemetry exporters or a different tracing system, the
 `record_observation` function is small and easy to swap or extend.
+
+## What to monitor in production
+
+Past Langfuse, the operational signals you want dashboards / alerts on:
+
+| Signal                             | Source                                  | What it tells you                                          |
+| ---------------------------------- | --------------------------------------- | ---------------------------------------------------------- |
+| `/v1/chat` 5xx rate                | Access logs                             | Provider outage or N0Tune bug.                             |
+| `/v1/chat` p95 latency             | Access logs                             | Provider slowness vs. N0Tune slowness.                     |
+| `/v1/openai/chat/completions` rate | Access logs                             | OpenAI-compatible proxy demand.                            |
+| 429 rate per API key               | Access logs                             | Capacity planning + abusive callers.                       |
+| Cache hit rate                     | `context_runs.cache_hit`                | Are we earning the cost of the cache?                      |
+| Tokens saved vs. naive             | `context_runs.prompt_tokens_saved_*`    | The headline number; useful for cost dashboards.           |
+| Embedding error rate               | App logs (`logger.warning`)             | Hosted embedding provider degradation.                     |
+| Memory secret-rejection count      | App logs                                | Spikes here mean upstream callers are dirty.               |
+| Postgres connections in use        | Postgres metrics                        | Pool sizing.                                               |
+| Redis ops/sec                      | Redis metrics                           | Cache + limiter health.                                    |
+
+`context_runs` rows are queryable directly:
+
+```sql
+SELECT
+  date_trunc('hour', created_at) AS bucket,
+  COUNT(*) FILTER (WHERE cache_hit) * 1.0 / COUNT(*) AS hit_rate,
+  AVG(prompt_tokens_estimated) AS avg_compiled_tokens,
+  AVG(prompt_tokens_saved_estimated) AS avg_tokens_saved
+FROM context_runs
+WHERE created_at > now() - interval '24 hours'
+GROUP BY 1
+ORDER BY 1;
+```
+
+Stand that up as a Grafana / Metabase / Superset chart and you have a
+serviceable observability story without Langfuse.
+
+## Sampling
+
+For high-volume deployments, sample Langfuse traces rather than recording
+every request. The integration calls `record_observation` synchronously; if
+your model provider is fast and you're at >10k rps, the Langfuse SDK
+becomes a non-trivial overhead. Sampling lives in your own code (decide
+before calling `record_observation`).
+
+## What this is **not**
+
+- Not a metric registry. We don't ship a `/metrics` endpoint yet. If you
+  need Prometheus scraping, add `prometheus-fastapi-instrumentator` and a
+  middleware in `apps/api/app/main.py`.
+- Not an APM. Use Datadog APM, Grafana Tempo, or OpenTelemetry to fill
+  that gap. `record_observation` is a useful inspiration for where to
+  put OTel spans.
+- Not a replacement for application logs. Keep your existing logging
+  stack; the audit log and Langfuse trace are additions.

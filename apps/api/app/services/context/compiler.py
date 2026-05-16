@@ -2,7 +2,7 @@ from collections.abc import Sequence
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -17,6 +17,7 @@ from app.schemas.api import (
 )
 from app.services.context.embedding import cosine_similarity, embed_text, estimate_tokens
 from app.services.context.lexical import bm25_scores, normalize_scores
+from app.services.memory.lifecycle import effective_confidence, is_retrievable, mark_used
 from app.services.security.auth import ensure_user
 
 UNTRUSTED_CONTEXT_WARNING = (
@@ -27,14 +28,7 @@ UTC = timezone.utc
 
 
 def _is_active_memory(memory: Memory, now: datetime) -> bool:
-    if memory.deleted_at is not None:
-        return False
-    if memory.expires_at is None:
-        return True
-    expires_at = memory.expires_at
-    if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=UTC)
-    return expires_at > now
+    return is_retrievable(memory, now=now)
 
 
 def get_style_profile(session: Session, app_id: str, user_id: str) -> StyleProfile:
@@ -73,15 +67,22 @@ def compile_context(
     settings = get_settings()
     lexical_weight = max(0.0, min(1.0, settings.hybrid_lexical_weight))
 
+    shared_scopes = ("global", "app", "org", "team", "project")
     memory_candidates = [
         memory
         for memory in session.scalars(
-            select(Memory).where(Memory.app_id == request.app_id, Memory.user_id == request.user_id)
+            select(Memory).where(
+                Memory.app_id == request.app_id,
+                or_(
+                    Memory.user_id == request.user_id,
+                    Memory.scope.in_(shared_scopes),
+                ),
+            )
         )
         if _is_active_memory(memory, now)
     ]
     memory_vector_scores = [
-        cosine_similarity(memory.embedding, query_embedding) * max(memory.confidence, 0.05)
+        cosine_similarity(memory.embedding, query_embedding) * max(effective_confidence(memory, now=now), 0.05)
         for memory in memory_candidates
     ]
     memory_scores = _blend_scores(
@@ -143,6 +144,8 @@ def compile_context(
             )
             continue
         used_tokens += cost
+        if persist_run:
+            mark_used(memory, now=now)
         selected_memories.append(
             MemoryResponse.model_validate(memory).model_copy(update={"similarity": round(score, 4)})
         )

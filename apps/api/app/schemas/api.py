@@ -16,6 +16,7 @@ class MemoryCreate(ApiModel):
     confidence: float = Field(default=0.8, ge=0.0, le=1.0)
     source_message_id: str | None = None
     expires_at: datetime | None = None
+    scope: Literal["global", "app", "org", "team", "project", "user", "session"] = "user"
 
 
 class MemoryUpdate(ApiModel):
@@ -35,6 +36,12 @@ class MemoryResponse(ApiModel):
     confidence: float
     source_message_id: str | None
     expires_at: datetime | None
+    state: str = "active"
+    scope: str = "user"
+    last_used_at: datetime | None = None
+    last_confirmed_at: datetime | None = None
+    version: int = 1
+    replaced_by_memory_id: str | None = None
     created_at: datetime
     updated_at: datetime
     deleted_at: datetime | None
@@ -175,6 +182,37 @@ class DeleteResponse(ApiModel):
     id: str
     deleted: bool
     hard_deleted: bool = False
+
+
+class ApiKeyCreate(ApiModel):
+    app_id: str = "demo"
+    name: str = Field(min_length=1, max_length=128)
+    role: Literal["owner", "admin", "developer", "viewer"] = "developer"
+
+
+class ApiKeyResponse(ApiModel):
+    id: str
+    app_id: str
+    name: str
+    role: str
+    key_prefix: str
+    created_at: datetime
+    created_by_actor: str | None = None
+    revoked_at: datetime | None = None
+    last_used_at: datetime | None = None
+    plaintext: str | None = None
+
+
+class AuditLogResponse(ApiModel):
+    id: str
+    app_id: str
+    actor_user_id: str | None
+    actor_role: str | None
+    action: str
+    resource_type: str
+    resource_id: str | None
+    metadata_json: dict[str, Any]
+    created_at: datetime
 
 
 class OpenAIMessage(ApiModel):

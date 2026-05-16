@@ -1,0 +1,51 @@
+{
+  "scenarios": [
+    {
+      "name": "two_user_personalization",
+      "description": "Two users in one app each have a dozen-plus memories (some relevant to RAG, many about unrelated topics) and the app has a wider knowledge base. The eval measures how many tokens the Context Compiler avoids by not stuffing every memory and every chunk into the prompt.",
+      "memories": [
+        {"user_id": "user_a", "type": "preference", "text": "User_a prefers terse code-first RAG and retrieval answers without analogies.", "confidence": 0.95},
+        {"user_id": "user_a", "type": "style", "text": "User_a likes ASCII architecture diagrams when explaining retrieval systems.", "confidence": 0.9},
+        {"user_id": "user_a", "type": "fact", "text": "User_a maintains a vector store at work and already understands embeddings.", "confidence": 0.85},
+        {"user_id": "user_a", "type": "preference", "text": "User_a hates generic introductions and wants to jump straight to the technical detail.", "confidence": 0.9},
+        {"user_id": "user_a", "type": "fact", "text": "User_a deploys with Docker Compose and Postgres in production.", "confidence": 0.7},
+        {"user_id": "user_a", "type": "preference", "text": "User_a likes their coffee strong and dark.", "confidence": 0.6},
+        {"user_id": "user_a", "type": "fact", "text": "User_a vacations in Lisbon every summer with their dog.", "confidence": 0.55},
+        {"user_id": "user_a", "type": "preference", "text": "User_a prefers async APIs and dislikes thread-per-request servers.", "confidence": 0.7},
+        {"user_id": "user_a", "type": "fact", "text": "User_a contributed a patch to the SQLAlchemy 2.0 async docs in 2024.", "confidence": 0.6},
+        {"user_id": "user_a", "type": "style", "text": "User_a writes commit messages in imperative present tense and under 70 chars.", "confidence": 0.65},
+        {"user_id": "user_a", "type": "fact", "text": "User_a's previous laptop died and they upgraded to a Framework 16 last quarter.", "confidence": 0.5},
+        {"user_id": "user_a", "type": "preference", "text": "User_a prefers ruff and mypy over black and pyright.", "confidence": 0.7},
+        {"user_id": "user_b", "type": "preference", "text": "User_b prefers beginner-friendly retrieval and RAG explanations with concrete analogies.", "confidence": 0.95},
+        {"user_id": "user_b", "type": "style", "text": "User_b likes step-by-step walkthroughs and avoids unexplained jargon when learning retrieval concepts.", "confidence": 0.9},
+        {"user_id": "user_b", "type": "fact", "text": "User_b is new to vector stores and embeddings and prefers definitions first.", "confidence": 0.85},
+        {"user_id": "user_b", "type": "preference", "text": "User_b appreciates concrete examples with food or library analogies.", "confidence": 0.85},
+        {"user_id": "user_b", "type": "fact", "text": "User_b uses Python for personal projects and is still learning FastAPI.", "confidence": 0.7},
+        {"user_id": "user_b", "type": "preference", "text": "User_b enjoys long walks by the river and prefers iced tea.", "confidence": 0.55},
+        {"user_id": "user_b", "type": "fact", "text": "User_b is studying for a part-time MBA on weekends and has limited evenings.", "confidence": 0.5},
+        {"user_id": "user_b", "type": "preference", "text": "User_b dislikes auto-playing video tutorials and prefers written guides.", "confidence": 0.7},
+        {"user_id": "user_b", "type": "fact", "text": "User_b's primary editor is VS Code with the GitHub Copilot extension.", "confidence": 0.6},
+        {"user_id": "user_b", "type": "style", "text": "User_b appreciates short headings and lots of whitespace in long-form docs.", "confidence": 0.65},
+        {"user_id": "user_b", "type": "fact", "text": "User_b lives in Singapore and prefers SGT timestamps in any logs we ship.", "confidence": 0.5}
+      ],
+      "documents": [
+        {"title": "rag-overview", "content": "Retrieval-Augmented Generation (RAG) is a pattern where a system pulls relevant chunks of text from a corpus and passes them to a language model as context. The retriever is responsible for finding the right chunks given a query embedding. The generator is responsible for citing them faithfully. RAG works well when the corpus is up-to-date and when chunks fit cleanly into the model's context window."},
+        {"title": "rag-pitfalls", "content": "Common RAG failures include passing too many irrelevant chunks (which crowds out the actual question), chunks that contradict each other (which the model picks arbitrarily), embedding drift across model upgrades (cached vectors no longer match new queries), and prompt injection from untrusted source material (a chunk that tells the model to ignore prior instructions)."},
+        {"title": "rag-embeddings", "content": "Embedding models project text into dense vectors so semantic similarity becomes a distance computation. For RAG, the embedding model used at query time must match the one used at index time, otherwise the cosine similarity becomes meaningless. Common embedding models include OpenAI text-embedding-3-small (1536 dims) and BAAI bge-small-en (384 dims)."},
+        {"title": "rag-chunking", "content": "Chunk size is the most under-appreciated RAG knob. Too-small chunks lose context and confuse the model; too-large chunks dilute the relevant fragment. Common heuristics: chunk by paragraph, then split on sentence boundaries when paragraphs exceed roughly 900 characters. Store chunk metadata (title, source URL, document id) so citations stay intact."},
+        {"title": "rag-evaluation", "content": "Evaluating RAG systems requires measuring two things: retrieval quality (did we find the right chunks?) and answer quality (did the model use them correctly?). Standard metrics include MRR for retrieval, faithfulness for groundedness, and human judgment for usefulness. Cheap heuristics: keyword overlap, chunk-cited-in-answer counts, and unit-test-style asserts on known facts."},
+        {"title": "company-history", "content": "Our company was founded in 2017 in Berlin by three former classmates. We started as a consulting firm, pivoted to product in 2019, raised a small seed round in 2020, and have been profitable since 2023. The founding team grew up sailing on the Wannsee and that culture still shapes our weekly off-sites."},
+        {"title": "company-values", "content": "Our values are: curiosity over certainty, ship the embarrassing first version, write things down, default to async, and remember that the user has to live with whatever we build. None of these are negotiable, even when shipping looks slow because of them."},
+        {"title": "company-on-call", "content": "On-call rotates weekly across the engineering team. The primary takes pager events. The secondary handles non-paging follow-up. PagerDuty fires for paging-class alerts only; anything else lands in the #ops-noise channel. After-action reports are due within three business days."},
+        {"title": "company-leave", "content": "Annual leave is uncapped but every engineer must take at least 22 days a year. Sick leave is separate and not counted against vacation. Conference attendance is encouraged; the company pays for one major conference per engineer per year."},
+        {"title": "company-laptops", "content": "Engineers get a refreshed laptop every three years. The default is whichever current-gen Framework, MacBook Pro, or ThinkPad X1 Carbon you prefer. SaaS subscriptions are reimbursable up to a per-month cap; bigger budgets need lead sign-off."},
+        {"title": "company-travel", "content": "Travel for in-person off-sites is fully reimbursed including economy flights, train, ground transport, and a hotel within the booked range. Per-diem covers two meals per day. Lunch on travel days is provided by the host office."},
+        {"title": "company-stack", "content": "Our backend is Python (FastAPI + SQLAlchemy + Postgres), our frontend is Next.js with Tailwind, our infra runs on Kubernetes with ArgoCD-driven deploys, and we use Grafana plus OpenTelemetry for observability. We avoid bespoke RPC frameworks and stick to plain HTTP with OpenAPI."}
+      ],
+      "queries": [
+        {"user_id": "user_a", "message": "Walk me through how RAG retrieval works and what to watch for."},
+        {"user_id": "user_b", "message": "Walk me through how RAG retrieval works and what to watch for."}
+      ]
+    }
+  ]
+}

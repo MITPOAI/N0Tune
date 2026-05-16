@@ -53,14 +53,15 @@ def authorize_app(
     app_id: str,
     api_key: str | None = None,
     authorization: str | None = None,
-) -> None:
+) -> str | None:
+    """Authorize a request and return the actor's role string (or None when auth is off)."""
     settings = get_settings()
     token = api_key or extract_bearer_token(authorization)
 
     app = ensure_app(session, app_id)
     should_require = settings.require_api_key or token is not None
     if not should_require:
-        return
+        return None
 
     if token is None:
         raise HTTPException(
@@ -68,8 +69,18 @@ def authorize_app(
             detail="Missing N0Tune API key.",
         )
 
-    if app.api_key_hash is None or hash_api_key(token) != app.api_key_hash:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Invalid N0Tune API key for app.",
-        )
+    digest = hash_api_key(token)
+    if app.api_key_hash is not None and digest == app.api_key_hash:
+        return "owner"
+
+    # Multi-key path: check api_keys table.
+    from app.services.security.api_keys import lookup_active_key
+
+    row = lookup_active_key(session, app_id=app_id, plaintext=token)
+    if row is not None:
+        return row.role
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Invalid N0Tune API key for app.",
+    )

@@ -100,11 +100,21 @@ class Memory(Base):
     embedding: Mapped[list[float] | None] = mapped_column(
         Vector(EMBEDDING_DIMENSIONS), nullable=True
     )
+    state: Mapped[str] = mapped_column(String(32), default="active")
+    scope: Mapped[str] = mapped_column(String(32), default="user")
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_confirmed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    replaced_by_memory_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=now_utc, onupdate=now_utc
-    )
+    # NOTE: deliberately no ``onupdate=now_utc`` — retrieval-time stamps
+    # (``last_used_at``) should not invalidate the semantic cache. Routes that
+    # mutate memory *content* (update_memory, delete_memory, confirm_memory)
+    # set ``updated_at`` explicitly so cache freshness still detects edits.
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
@@ -215,4 +225,37 @@ class FeedbackEvent(Base):
     message_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     rating: Mapped[int] = mapped_column(Integer)
     feedback_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+
+
+class ApiKey(Base):
+    __tablename__ = "api_keys"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: new_id("key"))
+    app_id: Mapped[str] = mapped_column(
+        String(128), ForeignKey("apps.id", ondelete="CASCADE"), index=True
+    )
+    name: Mapped[str] = mapped_column(String(128))
+    key_hash: Mapped[str] = mapped_column(String(128), unique=True)
+    key_prefix: Mapped[str] = mapped_column(String(16))
+    role: Mapped[str] = mapped_column(String(32))
+    created_by_actor: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: new_id("aud"))
+    app_id: Mapped[str] = mapped_column(
+        String(128), ForeignKey("apps.id", ondelete="CASCADE"), index=True
+    )
+    actor_user_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    actor_role: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    action: Mapped[str] = mapped_column(String(128), index=True)
+    resource_type: Mapped[str] = mapped_column(String(64), index=True)
+    resource_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    metadata_json: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)

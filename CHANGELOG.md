@@ -6,6 +6,45 @@ All notable changes to N0Tune will be documented here.
 
 ### Added
 
+- Phase 11 — Permissions + audit log:
+  - Four roles (`viewer`, `developer`, `admin`, `owner`) with a permission matrix in `services/security/permissions.py`.
+  - New `api_keys` table and `POST/GET/DELETE /v1/api-keys` for minting, listing, and revoking app keys. Plaintext is returned once; only the hash is stored.
+  - New `audit_logs` table and `GET /v1/audit-logs` (admin-only). Memory and document mutations + API key changes now write audit rows.
+  - Legacy `N0TUNE_APP_API_KEY` remains valid as an `owner` role for backward compatibility.
+  - 11 new tests in `apps/api/app/tests/test_permissions_and_audit.py`.
+  - `docs/permissions.md` and `docs/audit-logs.md`.
+- Phase 9 — Memory lifecycle:
+  - New columns on `memories`: `state`, `last_used_at`, `last_confirmed_at`, `version`, `replaced_by_memory_id`.
+  - `services/memory/lifecycle.py`: state set, retrievable filter, exponential decay anchored at `last_confirmed_at` / `last_used_at` / `updated_at`, `confirm`/`deprecate` helpers.
+  - `POST /v1/memories/{id}/confirm` pins confidence past the half-life.
+  - `GET /v1/memories/export` returns soft-deleted rows for privacy compliance.
+  - Compiler now stamps `last_used_at` on selected memories without invalidating the semantic cache (regression fixed by removing `onupdate=now_utc` from `memories.updated_at`).
+  - `docs/memory-lifecycle.md`.
+- Phase 10 — Memory scopes:
+  - New `scope` column on `memories` (`global`, `app`, `org`, `team`, `project`, `user`, `session`).
+  - Compiler retrieves user-scoped memories plus shared-scope memories from the same app; cross-user `user`-scoped memories stay private.
+  - `docs/memory-scopes.md`.
+  - 9 new tests covering the lifecycle and scope behaviors.
+- Phase 8 — Evaluation harness:
+  - `evals/` directory with a shared `harness.py` and a `python -m evals` runner.
+  - `evals/token_savings_eval/` is the first real eval (scenarios JSON + a runnable script). The honest "stuff everything in" baseline is computed locally rather than trusted from the API. Current headline: **17.4 % token savings** with the deterministic hash backend.
+  - Placeholders for `memory_relevance_eval`, `context_compression_eval`, `prompt_injection_eval`, `semantic_cache_eval`, `answer_quality_eval` clearly labelled as future work.
+  - `docs/evaluations.md` and `docs/benchmarks.md`.
+- Phase 12 — Markdown folder connector:
+  - `integrations/markdown-folder/` shipped as `n0tune-markdown-folder` with a `n0tune-markdown-sync` CLI.
+  - Walks `*.md` / `*.markdown` files, hashes content, calls `POST /v1/documents`, skips unchanged files on re-sync.
+  - 5 new tests using mocked SDK transport.
+  - `docs/connectors.md` documents the connector contract for future ones.
+- Phase 13 — Local / offline mode:
+  - `docs/local-mode.md` covering Ollama, LM Studio, vLLM, and `fastembed` paths.
+  - `examples/local-ollama/README.md` rewritten as a runnable example with `host.docker.internal` notes for Linux, prerequisites, smoke commands, and troubleshooting.
+- Phase 14 — Production deployment docs:
+  - `docs/production.md` — env-var matrix, pre-deploy checklist, TLS + streaming proxy notes, logging redaction, upgrade strategy.
+  - `docs/scaling.md` — layer-by-layer scaling guidance and pgvector HNSW index commands.
+  - `docs/backup-restore.md` — backup tiers, end-user data deletion, disaster scenarios.
+  - `docs/deployment-security.md` — network policy, secrets, container hardening, incident response.
+  - `docs/observability.md` expanded with a production monitoring table and a Grafana-friendly query against `context_runs`.
+- `docs/dogfooding.md` rewritten as a reproducible loop with the latest 17.4 % token-savings headline and an honest "what broke and what we changed" section.
 - `img/logo.png` is committed and referenced from the top of the README.
 - Issue templates for bugs, features, security reports, and docs issues plus a `config.yml` that disables blank issues and points users at Discussions and the private security policy. ([`.github/ISSUE_TEMPLATE/`](.github/ISSUE_TEMPLATE/))
 - Pull request template with a structured "what / why / tests / docs / security / breaking / checklist" body. ([`.github/pull_request_template.md`](.github/pull_request_template.md))
