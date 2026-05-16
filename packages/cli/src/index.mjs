@@ -33,6 +33,8 @@ Commands:
   memory add <text>            Save a memory for a user.
   memory delete <id>           Soft-delete a memory.
   memory export                Dump memories to JSON.
+  memory consolidate           Cluster + collapse similar memories. Use --dry-run
+                               to preview without writing.
 
   persona export [--out file]  Export the current persona shell.
   persona import <file>        Import a .n0tune persona file (validates shape only).
@@ -50,6 +52,8 @@ Global options:
   --api-key <key>              Gateway API key. Default $N0TUNE_API_KEY.
   --app-id <id>                Gateway app id.   Default 'demo'.
   --user-id <id>               User id where applicable. Default 'cli'.
+  --out <file>                 Write output to a file instead of stdout.
+  --dry-run                    Preview the action without writing (memory consolidate).
   -h, --help                   Show this help.
 `;
 
@@ -60,6 +64,7 @@ function parseFlags(args) {
     appId: process.env.N0TUNE_APP_ID ?? "demo",
     userId: process.env.N0TUNE_USER_ID ?? "cli",
     out: null,
+    dryRun: false,
     help: false,
   };
   const positional = [];
@@ -80,6 +85,9 @@ function parseFlags(args) {
         break;
       case "--out":
         flags.out = args[++i];
+        break;
+      case "--dry-run":
+        flags.dryRun = true;
         break;
       case "-h":
       case "--help":
@@ -264,6 +272,20 @@ async function runMemory(positional, { flags }) {
       } else {
         console.log(output);
       }
+      return 0;
+    }
+    case "consolidate": {
+      const params = new URLSearchParams({
+        app_id: flags.appId,
+        user_id: flags.userId,
+        dry_run: flags.dryRun ? "true" : "false",
+      });
+      const report = await gatewayRequest(
+        "POST",
+        `/v1/memories/consolidate?${params.toString()}`,
+        { flags },
+      );
+      console.log(JSON.stringify(report, null, 2));
       return 0;
     }
     default:

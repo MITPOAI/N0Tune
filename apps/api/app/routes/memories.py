@@ -8,6 +8,7 @@ from app.db.session import get_session
 from app.models.entities import Memory
 from app.schemas.api import DeleteResponse, MemoryCreate, MemoryResponse, MemoryUpdate
 from app.services.context.embedding import cosine_similarity, embed_text
+from app.services.memory.consolidation import consolidate as run_consolidate
 from app.services.security.audit import record_audit
 from app.services.security.auth import authorize_app, ensure_user
 from app.services.security.permissions import Permission, require_permission
@@ -239,3 +240,54 @@ async def delete_memory(
     memory.updated_at = datetime.now(UTC)
     session.commit()
     return DeleteResponse(id=memory_id, deleted=True, hard_deleted=False)
+
+
+@router.post("/consolidate")
+async def consolidate_memories(
+    app_id: str = Query(default="demo"),
+    user_id: str = Query(...),
+    similarity_threshold: float = Query(default=0.85, ge=0.0, le=1.0),
+    dry_run: bool = Query(default=False),
+    session: Session = Depends(get_session),
+    x_n0tune_api_key: str | None = Header(default=None),
+    authorization: str | None = Header(default=None),
+) -> dict[str, object]:
+    """Collapse clusters of similar memories into a single summary.
+
+    Active memories whose embeddings are above ``similarity_threshold``
+    are merged into one summary memory; the originals are marked
+    ``deprecated`` and point at the summary via ``replaced_by_memory_id``.
+    The compiler's existing lifecycle filter excludes deprecated rows
+    automatically, so future chats see only the summary.
+    """
+    actor_role = authorize_app(session, app_id, x_n0tune_api_key, authorization)
+    if actor_role is not None:
+        require_permission(actor_role, Permission.WRITE_MEMORY)
+    ensure_user(session, app_id, user_id)
+
+    report = run_consolidate(
+        session,
+        app_id=app_id,
+        user_id=user_id,
+        similarity_threshold=similarity_threshold,
+        dry_run=dry_run,
+    )
+
+    if not dry_run:
+        record_audit(
+            session,
+            app_id=app_id,
+            action="memory.consolidate",
+            resource_type="memory",
+            actor_user_id=user_id,
+            actor_role=actor_role,
+            metadata={
+                "clusters_collapsed": report.clusters_collapsed,
+                "new_summary_ids": list(report.new_summary_ids),
+                "active_before": report.active_before,
+                "active_after": report.active_after,
+                "similarity_threshold": similarity_threshold,
+            },
+        )
+    session.commit()
+    return report.as_dict()

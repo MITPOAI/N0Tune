@@ -128,6 +128,31 @@ describe("n0tune CLI", () => {
     expect(errors.join("\n")).toContain("missing <message>");
   });
 
+  it("`memory consolidate --dry-run` passes dry_run=true to the gateway", async () => {
+    mockFetch.mockImplementationOnce(() =>
+      jsonResponse({
+        clusters_collapsed: 1,
+        new_summary_ids: [],
+        active_before: 4,
+        active_after: 4,
+        dry_run: true,
+      }),
+    );
+    const code = await runCli([
+      "memory",
+      "consolidate",
+      "--dry-run",
+      "--user-id",
+      "smoke",
+    ]);
+    expect(code).toBe(0);
+    const [url, init] = mockFetch.mock.calls[0];
+    expect(String(url)).toContain("/v1/memories/consolidate");
+    expect(String(url)).toContain("dry_run=true");
+    expect(init?.method).toBe("POST");
+    expect(logs.join("\n")).toContain('"dry_run": true');
+  });
+
   it("`persona import` rejects a non-n0tune file", async () => {
     const { writeFile } = await import("node:fs/promises");
     const { tmpdir } = await import("node:os");
