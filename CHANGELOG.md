@@ -2,6 +2,58 @@
 
 All notable changes to N0Tune will be documented here.
 
+## 0.1.1 - 2026-05-17
+
+Polish release. Same product surface as 0.1.0, but CI is green, agents
+get a one-page operating manual, and the install story is documented.
+Full notes in [docs/releases/v0.1.1.md](docs/releases/v0.1.1.md).
+
+### CI
+
+- Gitleaks no longer trips on the literal `X-N0Tune-API-Key` header name
+  in CHANGELOG prose. `.gitleaks.toml` gets `regexTarget = "line"`,
+  a `CHANGELOG.md` path entry, the header regex, and the project
+  stopwords; `.gitleaksignore` pins the historical fingerprint.
+- `integrations/vercel-ai-sdk` and `apps/desktop` typecheck clean.
+  `packages/sdk-js` got a `prepare` script (npm install builds `dist/`)
+  and the Node CI job builds `@n0tune/sdk` before any workspace
+  typechecks run.
+- Playwright e2e — removed a stale `aria-label="Refresh data"` that
+  shadowed the "Refresh" button text and broke the anchored test
+  regex. CI now also polls `localhost:3000` before starting tests
+  (the dashboard container has no healthcheck).
+
+### Agents
+
+- `CLAUDE.md` + `AGENTS.md` at the repo root. Armor framing, hard
+  rules, repo map, conventions, pre-PR commands. Future agents stay
+  grounded.
+
+### Install
+
+- `docs/install.md` — standalone install guide with a paste-able
+  prompt that has the AI itself wire up MCP for you.
+
+### UI
+
+- Desktop styles: light/dark via prefers-color-scheme, refined palette,
+  focus rings, subtle motion, tabular numerals on the status overlay.
+- Dashboard styles + Tailwind config: matched transitions, surface
+  shadows, hover/active states, and the header tag reframed from
+  "Personal AI Runtime" to "Armor for your AI tools".
+
+### Tauri
+
+- Removed every iOS/Android `cfg` gate from `apps/desktop/src-tauri`.
+  The project targets Windows/macOS/Linux only.
+
+### Dogfooding
+
+- `scripts/seed-dogfooding.ps1` now indexes the armor docs alongside
+  `context-compiler.md` and posts armor-framed seed memories. Three
+  context previews fire end-to-end to confirm the compiler returns
+  the right framing.
+
 ## 0.1.0 - 2026-05-17
 
 First tagged release. The "armor for your AI tools" framing replaces the

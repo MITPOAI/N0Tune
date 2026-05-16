@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "n0tune-markdown-folder"
-version = "0.1.0"
+version = "0.1.1"
 description = "Sync a folder of Markdown files into N0Tune documents."
 readme = "README.md"
 requires-python = ">=3.10"
