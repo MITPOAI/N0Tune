@@ -1,92 +1,97 @@
 # Personas
 
-Personas describe a personal AI's name, avatar, personality, style, allowed tools, and memory mode.
+A persona is the public face of your N0Tune — the name, avatar, style, and
+memory mode you want a model to project. Personas are portable
+(`.n0tune.json` files); they are **not** the same thing as your private
+memory, which never travels by default.
 
-Status: format plan only. No persona runtime is implemented in Phase A.
+## The four shipped presets
 
-## Goals
+| File                                | Persona                          | Memory mode | Best for                                   |
+| ----------------------------------- | -------------------------------- | ----------- | ------------------------------------------ |
+| `developer-mentor.n0tune.json`      | A patient senior engineer        | `auto`      | Pairing on architecture or new languages   |
+| `study-buddy.n0tune.json`           | Upbeat tutor who quizzes you     | `review`    | Learning a new topic                       |
+| `writing-coach.n0tune.json`         | Restrained editor                | `manual`    | Drafts where you control what's remembered |
+| `startup-advisor.n0tune.json`       | Pragmatic sparring partner       | `auto`      | Pitching, validating, risk-naming          |
 
-Personas should be portable without leaking private memory by default.
+Each is a small JSON file you can read in a text editor. Open any of them
+to see the format.
 
-The planned export extension is:
+## File format
 
-```text
-.n0tune
-```
-
-## Default Export Contents
-
-By default, persona export should include:
-
-- persona name
-- avatar reference
-- personality
-- style profile
-- memory mode
-- allowed tools
-- provider preference without API keys
-
-By default, persona export should not include:
-
-- private memories
-- provider API keys
-- local file contents
-- absolute private file paths
-- audit logs
-- semantic cache entries
-
-## Export Modes
-
-| Mode                        | Contents                                         |
-| --------------------------- | ------------------------------------------------ |
-| Persona only                | Persona config, style, avatar reference          |
-| Persona + selected memories | Persona config plus user-selected memory records |
-| Full encrypted backup       | Future mode for full local backup                |
-
-## Draft Persona Format
+The schema lives in [`schema.json`](schema.json). Required fields:
 
 ```json
 {
-  "format": "n0tune.persona",
+  "format": "n0tune-persona",
   "version": 1,
   "persona": {
     "name": "Milo",
-    "avatar": {
-      "type": "image",
-      "ref": "avatar.png"
+    "avatar": "img/logo.png",
+    "personality": "Friendly, terse, honest.",
+    "style": {
+      "tone": "casual",
+      "depth": "medium",
+      "format": "examples + diagrams",
+      "avoid": ["long theory"]
     },
-    "personality": "Practical, warm, and direct.",
-    "memoryMode": "auto-review",
-    "allowedTools": ["memory", "files", "context_preview"]
-  },
-  "style": {
-    "tone": "casual",
-    "depth": "medium",
-    "format": "examples + diagrams",
-    "avoid": ["long theory"]
-  },
-  "sharing": {
-    "includesPrivateMemories": false,
-    "includesProviderSecrets": false
+    "memoryMode": "auto"
   }
 }
 ```
 
-## Preset Direction
+Optional fields:
 
-Initial preset folders can include:
+- `persona.allowedTools` — array of MCP tool names this persona is allowed
+  to expose to remote agents.
+- `memories` — exported memory rows. **Omitted by default.** Including
+  this is opt-in per export.
+- `notes` — free text for humans.
 
-- `developer-mentor`
-- `study-buddy`
-- `writing-coach`
-- `startup-advisor`
+## Memory modes
 
-Each preset should include a README and a persona JSON file once the runtime exists.
+| Mode      | What                                                                  |
+| --------- | --------------------------------------------------------------------- |
+| `auto`    | The extractor saves useful memories silently.                         |
+| `review`  | The extractor creates `candidate` rows; you approve them later.       |
+| `manual`  | Nothing is saved unless you write it explicitly via the API/UI.       |
+| `off`     | Each session is independent. The compiler ignores prior memories.     |
 
-## Privacy Rules
+`review` is the safe default for personas shared with other humans.
 
-- private memories are never exported by default
-- API keys are never exported
-- local file contents are never exported by default
-- selected-memory export must be explicit
-- imports should preview what will be added before writing
+## Importing and exporting
+
+Today's flow uses the CLI:
+
+```bash
+# Export the current user's persona (style only, no private memories)
+n0tune persona export --out my-persona.n0tune.json
+
+# Validate someone else's persona file
+n0tune persona import their-persona.n0tune.json
+```
+
+Import currently validates shape and prints a summary; writing into the
+Gateway persona endpoint is on the v0.5 roadmap.
+
+## Privacy rules
+
+- Private memories are **never** exported by default. The user must
+  explicitly opt-in to include them per export.
+- Provider API keys are **never** exported. Persona files don't carry
+  secrets.
+- Local file contents are **never** exported. Personas refer to file
+  paths only, and only when relevant.
+- Audit logs and semantic cache rows are **never** exported.
+- Imports are previewed before they write anything, so a malicious
+  persona file can't silently overwrite your style.
+
+## What this is **not**
+
+- Not a packaging system. We don't sign personas. Treat shared persona
+  files like you'd treat shared shell scripts: read before importing.
+- Not a model identity. The model doesn't "become" the persona; it
+  receives the persona's style in its system prompt. Same model.
+  Different prompt.
+- Not the place to ship custom tools. Tool wiring belongs in the MCP
+  server or the Desktop's allow-list, not in a persona file.

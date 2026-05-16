@@ -1,19 +1,27 @@
 <p align="center">
-  <img src="img/logo.png" alt="N0Tune logo" />
+  <img src="img/logo.png" alt="" width="320" />
 </p>
 
-# N0Tune
+<p align="center"><strong>Turns any AI model into your personal AI — without fine-tuning.</strong></p>
 
-N0Tune turns any AI model into your personal AI - without fine-tuning.
+<p align="center">
+  Bring GPT, Claude, Gemini, Qwen, OpenRouter, Ollama, or any OpenAI-compatible model.<br/>
+  Add local memory, style, files, semantic cache, and a context compiler on top.
+</p>
 
-Bring GPT, Claude, Gemini, Qwen, OpenRouter, Ollama, or any OpenAI-compatible model. N0Tune adds local memory, style, files, semantic cache, and context compilation.
+<p align="center"><em>Same model. Same question. Personalized answer. No fine-tuning.</em></p>
 
-Same model.
-Same question.
-Personalized answer.
-No fine-tuning.
+<p align="center">
+  <a href="docs/product-direction.md">Direction</a> ·
+  <a href="docs/editions.md">Editions</a> ·
+  <a href="docs/context-tuning.md">Context-tuning</a> ·
+  <a href="docs/providers.md">Providers</a> ·
+  <a href="docs/roadmap.md">Roadmap</a>
+</p>
 
-N0Tune is pronounced "No Tune". The display name is **N0Tune** with a zero. Package, CLI, Docker, npm, and GitHub names use `n0tune`.
+<p align="center">
+  <sub>Pronounced "no tune" — the display wordmark is the logo above; packages, CLIs, and Docker images all use <code>n0tune</code>.</sub>
+</p>
 
 ## What N0Tune Is
 

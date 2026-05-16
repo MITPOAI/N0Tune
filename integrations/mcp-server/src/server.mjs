@@ -84,6 +84,20 @@ export const toolDefinitions = [
       required: ["memory_id"],
     },
   },
+  {
+    name: "n0tune_get_persona",
+    description:
+      "Read the user's compact persona shell (name + style profile + memory mode). " +
+      "Does NOT include private memories.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        app_id: { type: "string" },
+        user_id: { type: "string" },
+      },
+      required: ["user_id"],
+    },
+  },
 ];
 
 const apiBaseUrl = process.env.N0TUNE_API_BASE_URL ?? "http://localhost:8000";
@@ -135,6 +149,25 @@ export async function callTool(name, args = {}) {
       return api(`/v1/memories/${args.memory_id}?app_id=${encodeURIComponent(args.app_id ?? defaultAppId)}`, {
         method: "DELETE",
       });
+    case "n0tune_get_persona": {
+      // Persona = style profile + the user's saved name/avatar metadata
+      // when the Desktop persona endpoint lands. For now we return the
+      // style profile so MCP clients can call this tool today.
+      const style = await api(
+        `/v1/users/${args.user_id}/style?app_id=${encodeURIComponent(
+          args.app_id ?? defaultAppId,
+        )}`,
+      );
+      return {
+        format: "n0tune-persona",
+        version: 1,
+        user_id: args.user_id,
+        style,
+        notes:
+          "MCP get_persona returns the public persona shell. Private memories are " +
+          "NOT included; use n0tune_search_memories with explicit consent for those.",
+      };
+    }
     default:
       throw new Error(`Unknown N0Tune MCP tool: ${name}`);
   }

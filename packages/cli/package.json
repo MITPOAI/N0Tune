@@ -1,0 +1,25 @@
+{
+  "name": "@n0tune/cli",
+  "version": "0.1.0",
+  "description": "The n0tune CLI: doctor, demo, memory, persona, files, mcp.",
+  "type": "module",
+  "bin": {
+    "n0tune": "bin/n0tune.mjs"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@n0tune/sdk": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "typescript": "^5.6.3",
+    "vitest": "^4.1.6"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

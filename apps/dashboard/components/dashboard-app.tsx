@@ -442,23 +442,29 @@ export function DashboardApp() {
 
   return (
     <main className="min-h-screen bg-field text-ink">
-      <header className="border-b border-line bg-white">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-5 py-4">
-          <div className="flex items-center gap-3">
-            <div className="grid h-9 w-9 place-items-center rounded-md bg-ink text-sm font-bold text-white">
-              N0
-            </div>
-            <div>
-              <h1 className="text-base font-semibold">N0Tune</h1>
-              <p className="text-xs text-ink/60">
-                Personal AI runtime, memory, and context compiler gateway
-              </p>
-            </div>
+      <header className="sticky top-0 z-10 border-b border-line bg-white/95 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-5 py-3">
+          <div className="flex items-center gap-3" aria-label="N0Tune">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo.png"
+              alt=""
+              className="h-8 w-auto block select-none"
+              draggable={false}
+            />
+            <span className="hidden text-xs uppercase tracking-wide text-ink/55 sm:inline">
+              Personal AI Runtime
+            </span>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <Field label="app_id" value={appId} onChange={setAppId} />
             <Field label="user_id" value={userId} onChange={setUserId} />
-            <button className="button" onClick={() => void refresh()}>
+            <button
+              type="button"
+              className="button"
+              onClick={() => void refresh()}
+              aria-label="Refresh data"
+            >
               Refresh
             </button>
           </div>

@@ -5,8 +5,10 @@
   "description": "N0Tune monorepo: context compiler and AI memory gateway.",
   "workspaces": [
     "apps/dashboard",
+    "apps/desktop",
     "integrations/mcp-server",
     "integrations/vercel-ai-sdk",
+    "packages/cli",
     "packages/sdk-js"
   ],
   "scripts": {

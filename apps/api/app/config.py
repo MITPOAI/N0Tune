@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     provider_name: str = "n0tune/dev"
     provider_base_url: str | None = None
     provider_api_key: str | None = None
+    # provider_kind selects the wire format. "openai" is the default and covers
+    # OpenAI, OpenRouter, Ollama, LM Studio, and any OpenAI-compatible endpoint.
+    # "anthropic" uses the /v1/messages shape, "gemini" uses generateContent.
+    provider_kind: str = "openai"
+    anthropic_version: str = "2023-06-01"
     rate_limit_rpm: int = 0
     rate_limit_window_seconds: int = 60
     rate_limit_backend: str = "memory"
