@@ -1,0 +1,25 @@
+[package]
+name = "n0tune-desktop"
+version = "0.1.0"
+description = "N0Tune Desktop — personal AI runtime."
+authors = ["N0Tune contributors"]
+edition = "2021"
+rust-version = "1.77"
+
+[lib]
+name = "n0tune_desktop_lib"
+path = "src/lib.rs"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+
+[features]
+default = []
+custom-protocol = ["tauri/custom-protocol"]

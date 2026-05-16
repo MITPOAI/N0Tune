@@ -1,116 +1,158 @@
 # N0Tune Desktop
 
-N0Tune Desktop is the planned local app for normal users.
+The personal AI runtime for your laptop. Bring any model provider; N0Tune adds
+local memory, style, files, and a context compiler around it.
 
-Status: architecture placeholder only. No Desktop app is implemented in Phase A.
+> Logo + favicon are sourced from [`../../img/logo-s.png`](../../img/logo-s.png).
+> The wordmark `logo.png` is used in the dashboard header and on the README.
 
-## Product Goal
+## How does it work today?
 
-Desktop should let a user create a personal AI powered by their chosen model provider:
+```
+┌────────────────────┐       ┌──────────────────┐       ┌──────────────────┐
+│  React renderer    │──IPC──│  Tauri (Rust)    │──HTTP─│  Model provider  │
+│  (apps/desktop/src)│       │  (src-tauri/)    │       │  (OpenAI/Claude/ │
+└────────────────────┘       └────────┬─────────┘       │  Gemini/Ollama…) │
+                                      │                 └──────────────────┘
+                            ┌─────────▼──────────┐
+                            │  Local SQLite +    │
+                            │  OS keychain       │
+                            │  (storage stub)    │
+                            └────────────────────┘
+```
 
-- OpenAI
-- Anthropic Claude
-- Google Gemini
-- Qwen
-- OpenRouter
-- Ollama
-- LM Studio
-- custom OpenAI-compatible endpoint
+Today, the React renderer is **complete** and uses a `LocalStubBackend`
+(in-memory). The Tauri Rust side is **scaffolded** (`src-tauri/`) with one
+working `runtime_info` command; the SQLite + keychain wiring is the
+follow-up work that turns the dev shell into a real downloadable app.
 
-N0Tune adds local memory, style, files, semantic cache, and context compilation. The model remains unchanged.
+## Run it now (no installer needed)
 
-## Recommended Stack
+```bash
+# Web preview against the in-memory stub backend — works on any machine
+# with Node 20+:
+npm --workspace apps/desktop run dev
+# Open http://localhost:1420
+```
 
-Default:
+The dev shell exercises every UI surface: onboarding → provider settings →
+chat → memory viewer → context preview → persona settings. Memories live
+in RAM and reset when you reload.
 
-- Tauri
-- React
-- TypeScript
-- SQLite
-- sqlite-vec, LanceDB, or equivalent local vector search
+## Build a downloadable installer
 
-Fallback:
+You build the `.exe` / `.dmg` / `.AppImage` from source. We don't host
+signed binaries yet (that lands in Phase J of the roadmap).
 
-- Electron, only if Tauri blocks MVP speed
+### One-time prerequisites
 
-## MVP Screens
+- **Node 20+** and **npm**.
+- **Rust** via [rustup](https://rustup.rs/).
+- **OS-specific build tools** for Tauri 2 — follow
+  [v2.tauri.app/start/prerequisites](https://v2.tauri.app/start/prerequisites/):
+  - **Windows**: Microsoft C++ Build Tools + WebView2 runtime.
+  - **macOS**: Xcode Command Line Tools (`xcode-select --install`).
+  - **Linux**: `webkit2gtk-4.1`, `librsvg2-dev`, `libayatana-appindicator3-dev`,
+    `build-essential`, `curl`, `wget`, `file`, `libssl-dev`.
 
-- Onboarding
-- Provider settings
-- Chat
-- Persona manager
-- Style profile
-- Memory viewer
-- Context preview
-- File indexing
-- Export/import persona
+### Generate platform icons (once)
 
-## First-Run Onboarding
+The repo ships PNG icons generated from `img/logo-s.png`. macOS and Windows
+also need `.icns` and `.ico`. Tauri's CLI can generate them from the
+source PNG:
 
-Ask for:
+```bash
+npm --workspace apps/desktop run tauri:icon
+```
 
-- AI name
-- avatar or preset
-- provider
-- API key or local endpoint
-- memory mode
-- preferred response style
-- optional folders to index
+That command writes `src-tauri/icons/icon.icns`, `src-tauri/icons/icon.ico`,
+and the Microsoft Store sizes alongside the PNGs we already commit.
 
-## Local Storage
+### Dev mode (hot-reload)
 
-Desktop should use:
+```bash
+npm --workspace apps/desktop run tauri:dev
+```
 
-- SQLite for local app data
-- local vector store for memories/files
-- OS keychain for provider API keys where practical
-- local files for persona export/import
+This runs Vite for the renderer and launches a native window through
+Tauri. The renderer detects Tauri at runtime (see
+`src/tauri-bridge.ts`) and calls real Rust commands instead of the
+in-memory stub.
 
-Desktop should not require:
+### Production build → installer
 
-- Postgres
-- Redis
-- Docker
-- hosted N0Tune Gateway
+```bash
+npm --workspace apps/desktop run tauri:build
+```
 
-## Context Preview
+Output paths (relative to the repo):
 
-Context preview should show:
+| OS       | File                                                                                   |
+| -------- | -------------------------------------------------------------------------------------- |
+| Windows  | `apps/desktop/src-tauri/target/release/bundle/msi/N0Tune_0.1.0_x64_en-US.msi`          |
+| Windows  | `apps/desktop/src-tauri/target/release/bundle/nsis/N0Tune_0.1.0_x64-setup.exe`         |
+| macOS    | `apps/desktop/src-tauri/target/release/bundle/macos/N0Tune.app`                        |
+| macOS    | `apps/desktop/src-tauri/target/release/bundle/dmg/N0Tune_0.1.0_aarch64.dmg`            |
+| Linux    | `apps/desktop/src-tauri/target/release/bundle/appimage/n0tune_0.1.0_amd64.AppImage`    |
+| Linux    | `apps/desktop/src-tauri/target/release/bundle/deb/n0tune_0.1.0_amd64.deb`              |
 
-- memories used
-- file chunks used
-- style profile used
-- compiled context
-- estimated tokens
-- excluded risky content
-- model/provider selected
+The Windows MSI is the typical installer; macOS users want the `.dmg`;
+Linux users pick `AppImage` (portable) or `.deb` (installs to `/usr/bin`).
 
-This is a core product surface, not a developer-only debug view.
+You can sign and notarize macOS bundles by setting Apple Developer
+environment variables — see Tauri's [code-signing
+guide](https://v2.tauri.app/distribute/sign/macos/). We don't ship any
+keys in the repo.
 
-## Security Defaults
+## Bring your own model
 
-- private memory local by default
-- file indexing opt-in
-- no API key logging
-- provider keys deletable
-- persona exports exclude memories by default
-- MCP disabled unless explicitly configured
+Open **Provider** in the desktop window and pick one:
 
-## Future Floating Widget
+- **OpenAI** — `https://api.openai.com/v1`, model `gpt-4o-mini` (paste your key).
+- **Anthropic Claude** — `https://api.anthropic.com`, model `claude-sonnet-4-5`.
+- **Google Gemini** — `https://generativelanguage.googleapis.com/v1beta`, model `gemini-1.5-pro`.
+- **OpenRouter** — `https://openrouter.ai/api/v1`, any model id (e.g. `openrouter/auto`).
+- **Ollama** — `http://localhost:11434/v1`, model `llama3.1:8b-instruct` (no key).
+- **LM Studio** — `http://localhost:1234/v1`, the model id from the LM Studio UI.
+- **Custom OpenAI-compatible** — paste any URL/model.
 
-Do not build complex 3D first.
+API keys are read from the renderer in dev mode (and never persisted to
+disk by the stub). When the SQLite + OS-keychain layer lands in `src-tauri`,
+keys move out of memory and into the OS keychain.
 
-MVP later:
+## Name your AI
 
-- tray app
-- mini chat
-- global hotkey if practical
-- 2D avatar or `img/logo.png`
+Open **Persona** in the desktop window. The default name is **Milo** with
+the wordmark avatar. Change the name, tone, depth, format, "avoid" list,
+and memory mode (`auto` / `review` / `manual` / `off`). The change applies
+to the next chat turn.
 
-Future:
+You can also import a preset:
 
-- Live2D
-- VRM
-- community persona gallery
+```bash
+n0tune persona import personas/developer-mentor.n0tune.json
+```
 
-Only include assets with clear permissive licenses.
+## Where things live on disk (planned)
+
+When the Rust storage layer lands, N0Tune Desktop will store data here:
+
+| OS       | Location                                              |
+| -------- | ----------------------------------------------------- |
+| macOS    | `~/Library/Application Support/N0Tune/n0tune.db`      |
+| Windows  | `%APPDATA%\N0Tune\n0tune.db`                          |
+| Linux    | `~/.local/share/n0tune/n0tune.db`                     |
+
+The database is SQLite. The schema mirrors the Gateway's pgvector schema
+so the same Context Compiler runs in both modes.
+
+## What's still stubbed
+
+- The SQLite + keychain layer in `src-tauri/src/lib.rs`. The renderer's
+  `LocalStubBackend` is the source of truth for now.
+- macOS/Windows signed releases.
+- Floating widget / tray icon (`docs/floating-widget.md`).
+
+Everything else — onboarding, chat, memory viewer, context preview, persona
+settings, provider settings, real Anthropic/Gemini calls — is wired and
+working today.

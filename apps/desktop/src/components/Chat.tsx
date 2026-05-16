@@ -74,6 +74,10 @@ export function Chat({ persona, onSend, onSaveMemory }: ChatProps) {
             <p className="muted">
               Try: <em>“Remember I prefer terse code-first answers.”</em>
             </p>
+            <p className="muted small">
+              Each answer shows a context log below: which memories were
+              selected, estimated tokens, and which provider answered.
+            </p>
           </div>
         ) : (
           turns.map((turn) => (
@@ -88,16 +92,54 @@ export function Chat({ persona, onSend, onSaveMemory }: ChatProps) {
       </div>
 
       {lastResponse ? (
-        <aside className="chat-trace">
-          <span>
-            ~{lastResponse.trace.prompt_tokens_estimated} tokens compiled · ~
-            {lastResponse.trace.tokens_saved_estimated} saved · provider:{" "}
-            {lastResponse.provider}
-          </span>
-          <span>
-            memories used: {lastResponse.trace.selected_memories.length}
-          </span>
-        </aside>
+        <details className="chat-trace" open>
+          <summary>
+            <span>
+              ~{lastResponse.trace.prompt_tokens_estimated} tokens compiled ·{" "}
+              ~{lastResponse.trace.tokens_saved_estimated} saved · provider:{" "}
+              <strong>{lastResponse.provider}</strong>
+            </span>
+            <span>
+              {lastResponse.trace.selected_memories.length} memor
+              {lastResponse.trace.selected_memories.length === 1 ? "y" : "ies"}{" "}
+              used
+            </span>
+          </summary>
+          <div className="chat-trace-body">
+            {lastResponse.trace.selected_memories.length > 0 && (
+              <div>
+                <h4>Memories</h4>
+                <ul>
+                  {lastResponse.trace.selected_memories.map((memory) => (
+                    <li key={memory.id}>
+                      <span className="badge">{memory.type}</span> {memory.text}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {lastResponse.trace.why_selected.length > 0 && (
+              <div>
+                <h4>Why selected</h4>
+                <ul>
+                  {lastResponse.trace.why_selected.map((item) => (
+                    <li key={`${item.type}-${item.id}`}>
+                      <span className="badge">{item.type}</span> {item.id} —{" "}
+                      <span className="muted">{item.reason}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {lastResponse.trace.warnings.length > 0 && (
+              <div className="warnings">
+                {lastResponse.trace.warnings.map((warning) => (
+                  <p key={warning}>{warning}</p>
+                ))}
+              </div>
+            )}
+          </div>
+        </details>
       ) : null}
 
       <form className="chat-input" onSubmit={handleSend}>

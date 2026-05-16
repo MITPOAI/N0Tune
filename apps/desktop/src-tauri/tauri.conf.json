@@ -1,0 +1,46 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "N0Tune",
+  "version": "0.1.0",
+  "identifier": "dev.n0tune.desktop",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "N0Tune",
+        "width": 1100,
+        "height": 760,
+        "minWidth": 720,
+        "minHeight": 520,
+        "resizable": true,
+        "fullscreen": false,
+        "transparent": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "category": "Productivity",
+    "shortDescription": "Personal AI runtime — context-tunes any model with local memory.",
+    "longDescription": "N0Tune turns any AI model into your personal AI without fine-tuning. Bring GPT, Claude, Gemini, Qwen, OpenRouter, Ollama, or any OpenAI-compatible model. N0Tune adds local memory, style, files, semantic cache, and a context compiler on top.",
+    "copyright": "Copyright (c) N0Tune contributors. Apache-2.0.",
+    "publisher": "N0Tune"
+  },
+  "plugins": {}
+}

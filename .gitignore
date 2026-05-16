@@ -12,6 +12,9 @@ secrets/
 local-secrets/
 *.local
 
+# Claude / agent harness state — never commit
+.claude/
+
 # Python
 __pycache__/
 *.py[cod]

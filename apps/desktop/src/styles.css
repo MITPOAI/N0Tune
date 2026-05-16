@@ -346,12 +346,69 @@ button.primary:disabled {
 }
 
 .chat-trace {
-  padding: 8px 20px;
   border-top: 1px solid var(--line);
   font-size: 12px;
   color: var(--ink-mute);
+}
+
+.chat-trace > summary {
+  list-style: none;
+  cursor: pointer;
   display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
   justify-content: space-between;
+  padding: 8px 20px;
+}
+
+.chat-trace > summary::-webkit-details-marker {
+  display: none;
+}
+
+.chat-trace > summary strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.chat-trace[open] > summary {
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.chat-trace-body {
+  padding: 10px 20px 14px;
+  display: grid;
+  gap: 12px;
+  background: var(--field);
+}
+
+.chat-trace-body h4 {
+  margin: 0 0 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-mute);
+}
+
+.chat-trace-body ul {
+  margin: 0;
+  padding-left: 16px;
+  display: grid;
+  gap: 4px;
+  color: var(--ink);
+}
+
+.chat-trace-body .warnings {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #fbeae0;
+  border: 1px solid #e0b59a;
+  color: var(--warn);
+}
+
+.small {
+  font-size: 12px;
 }
 
 .chat-input {
