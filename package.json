@@ -1,0 +1,29 @@
+{
+  "name": "n0tune",
+  "version": "0.1.0",
+  "private": true,
+  "description": "N0Tune monorepo: context compiler and AI memory gateway.",
+  "workspaces": [
+    "apps/dashboard",
+    "integrations/mcp-server",
+    "packages/sdk-js"
+  ],
+  "scripts": {
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "format:check": "prettier --check \"**/*.{md,json,ts,tsx,js,mjs,css,yml,yaml}\""
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3"
+  },
+  "overrides": {
+    "next@15.5.18": {
+      "postcss": "8.5.14"
+    }
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

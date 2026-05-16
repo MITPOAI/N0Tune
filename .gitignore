@@ -1,0 +1,105 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.kubeconfig
+secrets/
+local-secrets/
+*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+env/
+ENV/
+pip-wheel-metadata/
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyre/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.hypothesis/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm/
+.pnpm-store/
+
+# Next.js
+.next/
+out/
+apps/dashboard/next-env.d.ts
+*.tsbuildinfo
+
+# Build and cache folders
+.cache/
+.turbo/
+.parcel-cache/
+.swc/
+tmp/
+temp/
+.tmp/
+
+# Logs
+logs/
+*.log
+*.pid
+*.seed
+
+# Database and local volumes
+postgres-data/
+redis-data/
+pgdata/
+data/
+volumes/
+*.sqlite
+*.sqlite3
+*.db
+
+# Test artifacts
+test-results/
+playwright-report/
+blob-report/
+junit.xml
+coverage/
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*.sublime-workspace
+*.sublime-project
+
+# Docker local overrides
+docker-compose.override.yml
+
+# Local generated reports
+reports/
+artifacts/

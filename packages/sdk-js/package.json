@@ -1,0 +1,23 @@
+{
+  "name": "@n0tune/sdk",
+  "version": "0.1.0",
+  "private": false,
+  "description": "TypeScript SDK for N0Tune. Phase 0 exposes metadata only.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vitest": "^4.1.6"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

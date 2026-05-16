@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "n0tune-api"
+version = "0.1.0"
+description = "FastAPI service for N0Tune."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "N0Tune contributors" }]
+dependencies = [
+    "alembic>=1.13,<2.0",
+    "fastapi>=0.115,<1.0",
+    "httpx>=0.27,<1.0",
+    "pgvector>=0.3,<1.0",
+    "psycopg[binary]>=3.2,<4.0",
+    "pydantic-settings>=2.6,<3.0",
+    "redis>=5,<6",
+    "sqlalchemy>=2.0,<3.0",
+    "uvicorn[standard]>=0.32,<1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "mypy>=1.13,<2.0",
+    "pip-audit>=2.10,<3.0",
+    "pytest>=9.0.3,<10.0",
+    "ruff>=0.7,<1.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "S"]
+ignore = [
+    "B008",
+    "S101"
+]
+
+[tool.mypy]
+python_version = "3.10"
+plugins = []
+strict = true
+warn_unused_configs = true
+
+[[tool.mypy.overrides]]
+module = ["pgvector.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["app/tests"]
