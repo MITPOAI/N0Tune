@@ -12,6 +12,7 @@
 <p align="center"><em>Same model. Same question. Personalized answer. Fewer tokens. No fine-tuning.</em></p>
 
 <p align="center">
+  <a href="docs/install.md">Install</a> ·
   <a href="docs/product-direction.md">Direction</a> ·
   <a href="docs/how-it-works.md">How it works</a> ·
   <a href="docs/wire-to-claude.md">Wire to Claude</a> ·

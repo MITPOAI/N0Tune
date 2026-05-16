@@ -25,13 +25,9 @@ serde_json = "1"
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-shell = "2"
 tauri-plugin-clipboard-manager = "2"
+tauri-plugin-global-shortcut = "2"
 thiserror = "2"
 uuid = { version = "1", features = ["v4"] }
-
-# Global-shortcut is a desktop-only plugin in Tauri 2; gate on cfg(desktop)
-# so iOS / Android targets don't try to compile it.
-[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
-tauri-plugin-global-shortcut = "2"
 
 [features]
 default = []

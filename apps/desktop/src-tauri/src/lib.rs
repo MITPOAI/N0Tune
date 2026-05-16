@@ -6,7 +6,6 @@ use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager, WindowEvent};
 
-#[cfg(not(any(target_os = "android", target_os = "ios")))]
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 
 /// Versioning info exposed to the renderer so the UI can verify it's
@@ -130,16 +129,11 @@ fn handle_menu_event(app: &AppHandle, id: &str) {
     }
 }
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let builder = tauri::Builder::default()
+    tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_clipboard_manager::init());
-
-    #[cfg(not(any(target_os = "android", target_os = "ios")))]
-    let builder = builder.plugin(tauri_plugin_global_shortcut::Builder::new().build());
-
-    builder
+        .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
             let handle = app.handle().clone();
 
@@ -181,7 +175,6 @@ pub fn run() {
             // Register the default global hotkey (Cmd+Shift+Space on macOS,
             // Alt+Space everywhere else). When pressed, fire the same
             // "quick-remember" event the tray menu fires.
-            #[cfg(not(any(target_os = "android", target_os = "ios")))]
             {
                 let modifiers = if cfg!(target_os = "macos") {
                     Modifiers::META | Modifiers::SHIFT

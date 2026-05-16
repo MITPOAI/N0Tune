@@ -30,21 +30,42 @@ $memories = @(
         app_id = $AppId
         user_id = $UserId
         type = "project"
-        text = "N0Tune is a Context Compiler and AI Memory Gateway, not only memory, RAG, cache, or prompt compression."
+        text = "N0Tune is armor for AI tools (Claude Code, Cursor, Codex CLI, Gemini CLI, OpenAI-compatible clients), not a replacement chat app. The fallback Desktop chat is the least important capability."
         confidence = 1.0
     },
     @{
         app_id = $AppId
         user_id = $UserId
         type = "project"
-        text = "N0Tune uses Apache-2.0 for open-source friendliness and patent protection."
+        text = "N0Tune is a Context Compiler and AI Memory Gateway. It is not only memory, RAG, cache, or prompt compression."
+        confidence = 1.0
+    },
+    @{
+        app_id = $AppId
+        user_id = $UserId
+        type = "project"
+        text = "N0Tune is Apache-2.0 licensed and has zero telemetry by design. Desktop memory is local (SQLite + OS keychain); Gateway memory is Postgres only when the server runs."
+        confidence = 1.0
+    },
+    @{
+        app_id = $AppId
+        user_id = $UserId
+        type = "project"
+        text = "N0Tune does not hardcode any model or provider. Every model name in the code is a default the user can override."
+        confidence = 1.0
+    },
+    @{
+        app_id = $AppId
+        user_id = $UserId
+        type = "project"
+        text = "Desktop runs on Windows, macOS, and Linux only. iOS and Android are not targets."
         confidence = 1.0
     },
     @{
         app_id = $AppId
         user_id = $UserId
         type = "preference"
-        text = "N0Tune docs should be direct, security-aware, and implementation-ready."
+        text = "N0Tune docs should be direct, security-aware, and implementation-ready. No hype; every claim must be reachable from a local proof path."
         confidence = 0.95
     }
 )
@@ -74,29 +95,61 @@ $style = @{
 }
 Invoke-RestMethod -Method Patch -Uri "$BaseUrl/v1/users/$UserId/style" -ContentType "application/json" -Body ($style | ConvertTo-Json -Depth 5)
 
-$docPath = (Resolve-Path -LiteralPath "docs/context-compiler.md").Path
-$docContent = [System.IO.File]::ReadAllText($docPath, [System.Text.Encoding]::UTF8)
-$docHash = Get-Sha256Hex $docContent
+$documentsToIndex = @(
+    @{ source = "docs/context-compiler.md"; title = "N0Tune Context Compiler documentation" },
+    @{ source = "docs/product-direction.md"; title = "N0Tune product direction (armor framing)" },
+    @{ source = "docs/how-it-works.md"; title = "How N0Tune works per AI tool" },
+    @{ source = "docs/install.md"; title = "N0Tune installation guide" },
+    @{ source = "docs/wire-to-claude.md"; title = "Wire N0Tune to Claude Desktop/Code/Cursor via MCP" },
+    @{ source = "docs/wire-to-codex-cli.md"; title = "Wire N0Tune to Codex CLI via MCP" },
+    @{ source = "docs/wire-to-gemini-cli.md"; title = "Wire N0Tune to Gemini CLI via adapter + hotkey" },
+    @{ source = "CLAUDE.md"; title = "N0Tune operating manual for Claude Code" },
+    @{ source = "AGENTS.md"; title = "N0Tune operating manual for non-Claude agents" }
+)
+
 $existingDocuments = @(Invoke-RestMethod -Method Get -Uri "$BaseUrl/v1/documents?app_id=$appQuery")
-$document = @{
-    app_id = $AppId
-    title = "N0Tune Context Compiler documentation"
-    source = "docs/context-compiler.md"
-    content = $docContent
-    metadata_json = @{ dogfooding = $true; phase = "6" }
-}
-$documentAlreadyExists = @($existingDocuments | Where-Object { $_.source -eq $document.source -and $_.content_hash -eq $docHash }).Count -gt 0
-if ($documentAlreadyExists) {
-    Write-Host "Skipping existing document: $($document.source)"
-}
-else {
-    Invoke-RestMethod -Method Post -Uri "$BaseUrl/v1/documents" -ContentType "application/json" -Body ($document | ConvertTo-Json -Depth 5)
+
+foreach ($doc in $documentsToIndex) {
+    $docPath = (Resolve-Path -LiteralPath $doc.source -ErrorAction SilentlyContinue)
+    if (-not $docPath) {
+        Write-Host "Skipping missing document: $($doc.source)"
+        continue
+    }
+    $docContent = [System.IO.File]::ReadAllText($docPath.Path, [System.Text.Encoding]::UTF8)
+    $docHash = Get-Sha256Hex $docContent
+    $document = @{
+        app_id = $AppId
+        title = $doc.title
+        source = $doc.source
+        content = $docContent
+        metadata_json = @{ dogfooding = $true; phase = "armor" }
+    }
+    $documentAlreadyExists = @($existingDocuments | Where-Object {
+        $_.source -eq $document.source -and $_.content_hash -eq $docHash
+    }).Count -gt 0
+    if ($documentAlreadyExists) {
+        Write-Host "Skipping existing document: $($document.source)"
+    }
+    else {
+        Write-Host "Indexing $($document.source)"
+        Invoke-RestMethod -Method Post -Uri "$BaseUrl/v1/documents" -ContentType "application/json" -Body ($document | ConvertTo-Json -Depth 5) | Out-Null
+    }
 }
 
-$preview = @{
-    app_id = $AppId
-    user_id = $UserId
-    message = "How does N0Tune compile context for a request?"
-    max_context_tokens = 1200
+$previews = @(
+    "How does N0Tune compile context for a request?",
+    "What is N0Tune and how is it different from a chat app?",
+    "How do I wire N0Tune to Claude Code?"
+)
+
+foreach ($prompt in $previews) {
+    Write-Host ""
+    Write-Host "--- Context preview: $prompt ---"
+    $preview = @{
+        app_id = $AppId
+        user_id = $UserId
+        message = $prompt
+        max_context_tokens = 1200
+    }
+    Invoke-RestMethod -Method Post -Uri "$BaseUrl/v1/context/preview" -ContentType "application/json" -Body ($preview | ConvertTo-Json)
 }
-Invoke-RestMethod -Method Post -Uri "$BaseUrl/v1/context/preview" -ContentType "application/json" -Body ($preview | ConvertTo-Json)

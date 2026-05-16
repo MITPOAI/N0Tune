@@ -1,6 +1,16 @@
 # Dogfooding
 
-We use N0Tune to build N0Tune. Today that dogfooding loop runs through the existing Gateway/server mode. That loop should remain because Gateway is the proving ground for the future Desktop and Core behavior.
+We use N0Tune to build N0Tune. The dogfooding loop runs through the
+Gateway because that's the easiest end-to-end proving ground; the same
+behaviors are moving behind `packages/core` so Desktop can reuse them
+locally without Docker.
+
+Since the **armor** reframe (May 2026), the seed pass indexes the docs
+that explain the project to other AI tools — `product-direction.md`,
+`how-it-works.md`, `install.md`, `wire-to-*.md`, `CLAUDE.md`, `AGENTS.md`
+— plus the `context-compiler.md` reference. That way, when you ask any
+MCP-wired client "what is N0Tune?", the answer comes back framed
+correctly (armor, not chat app).
 
 ## Why Gateway Dogfooding Still Matters
 
@@ -32,7 +42,14 @@ python -m evals token_savings
 
 What each step does:
 
-1. `seed-dogfooding.ps1` posts N0Tune project memories and indexes `docs/context-compiler.md`. The script computes a content hash so re-running it skips duplicate uploads.
+1. `seed-dogfooding.ps1` posts the armor-framed project memories
+   (Apache-2.0, zero telemetry, no hardcoded model, Windows/macOS/Linux
+   only, fallback chat is the *least* important capability) and indexes
+   the docs listed above. The script computes a content hash per doc so
+   re-running it skips duplicate uploads. It also fires three context
+   previews ("how does N0Tune compile context?", "what is N0Tune and how
+   is it different from a chat app?", "how do I wire N0Tune to Claude
+   Code?") so you can eyeball what the compiler returns end-to-end.
 2. `smoke-mvp.ps1` round-trips health, memory create/list, style profile, document upload, injection scoring, context preview, chat, and cache. Each run uses a fresh `user_id`.
 3. `python -m evals token_savings` runs the implemented token-savings eval. See [benchmarks.md](benchmarks.md).
 

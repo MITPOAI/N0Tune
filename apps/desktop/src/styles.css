@@ -1,16 +1,43 @@
 :root {
-  color-scheme: light;
+  color-scheme: light dark;
   --bg: #faf9f6;
   --surface: #ffffff;
   --line: #e7e5df;
   --ink: #18130c;
   --ink-mute: #5b554c;
-  --accent: #2a52be;
+  --accent: #2c4a8f;
+  --accent-soft: #e3ebf9;
   --warn: #b75221;
+  --warn-soft: #fbeae0;
+  --warn-line: #e0b59a;
   --field: #f3f1ea;
   --shadow: 0 1px 2px rgba(24, 19, 12, 0.08), 0 0 0 1px rgba(24, 19, 12, 0.04);
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Inter,
-    "Helvetica Neue", Arial, sans-serif;
+  --radius: 10px;
+  --radius-sm: 8px;
+  --motion: 140ms cubic-bezier(0.2, 0.6, 0.2, 1);
+  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "cv11", "ss01";
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14110d;
+    --surface: #1d1916;
+    --line: #2e2a25;
+    --ink: #f4eee4;
+    --ink-mute: #a39c8f;
+    --accent: #94b3ef;
+    --accent-soft: #1f2a44;
+    --warn: #e89b6f;
+    --warn-soft: #2e1d12;
+    --warn-line: #5a3a25;
+    --field: #221d18;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  }
 }
 
 * {
@@ -38,16 +65,24 @@ select {
   color: inherit;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  padding: 9px 11px;
   width: 100%;
+  transition: border-color var(--motion), box-shadow var(--motion);
+}
+
+input:hover,
+textarea:hover,
+select:hover {
+  border-color: color-mix(in srgb, var(--ink) 16%, var(--line));
 }
 
 input:focus,
 textarea:focus,
 select:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 label {
@@ -128,9 +163,11 @@ label select {
   background: transparent;
   border: 1px solid transparent;
   padding: 6px 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   color: var(--ink-mute);
   font-weight: 500;
+  transition: background var(--motion), color var(--motion),
+    border-color var(--motion);
 }
 
 .tab:hover {
@@ -142,6 +179,11 @@ label select {
   background: var(--field);
   border-color: var(--line);
   color: var(--ink);
+}
+
+.tab:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .app-body {
@@ -196,15 +238,30 @@ label select {
 
 button.primary {
   background: var(--ink);
-  color: #fff;
+  color: var(--bg);
   border: 1px solid var(--ink);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 8px 16px;
   font-weight: 600;
+  transition: transform var(--motion), box-shadow var(--motion), opacity var(--motion);
+}
+
+button.primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(24, 19, 12, 0.15);
+}
+
+button.primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+button.primary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 button.primary:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
@@ -523,24 +580,36 @@ button.primary:disabled {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 8px 10px;
-  padding: 8px 24px;
+  gap: 6px 14px;
+  padding: 10px 24px;
   border-top: 1px solid var(--line);
-  background: var(--surface);
+  background: color-mix(in srgb, var(--surface) 92%, var(--accent));
   font-size: 12px;
   color: var(--ink-mute);
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  backdrop-filter: blur(6px);
 }
 
 .status-metric {
   display: inline-flex;
   align-items: baseline;
-  gap: 4px;
+  gap: 5px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  transition: background var(--motion);
+}
+
+.status-metric:hover {
+  background: var(--accent-soft);
 }
 
 .status-metric strong {
   font-weight: 600;
   color: var(--ink);
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
 
 .status-label {
