@@ -2,7 +2,7 @@
   "name": "@n0tune/desktop",
   "version": "0.1.1",
   "private": true,
-  "description": "N0Tune Desktop — personal AI runtime on your laptop.",
+  "description": "N0Tune Desktop — armor for the AI tools you already use.",
   "type": "module",
   "scripts": {
     "dev": "vite",

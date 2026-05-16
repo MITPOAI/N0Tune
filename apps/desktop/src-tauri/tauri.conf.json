@@ -37,8 +37,8 @@
       "icons/icon.ico"
     ],
     "category": "Productivity",
-    "shortDescription": "Personal AI runtime — context-tunes any model with local memory.",
-    "longDescription": "N0Tune turns any AI model into your personal AI without fine-tuning. Bring GPT, Claude, Gemini, Qwen, OpenRouter, Ollama, or any OpenAI-compatible model. N0Tune adds local memory, style, files, semantic cache, and a context compiler on top.",
+    "shortDescription": "Armor for your AI tools — local memory + context for Claude Code, Cursor, Codex CLI, and more.",
+    "longDescription": "N0Tune is armor for the AI tools you already use. It adds a local memory layer, a context compiler, a token-savings tracker, and a tray + global-hotkey capture surface around Claude Code, Claude Desktop, Cursor, Codex CLI, Gemini CLI, and any OpenAI-compatible client. The fallback chat is for when nothing else is open. No fine-tuning, no telemetry, local-first.",
     "copyright": "Copyright (c) N0Tune contributors. Apache-2.0.",
     "publisher": "N0Tune"
   },
