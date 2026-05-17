@@ -112,13 +112,60 @@ CG-2 (API) → CG-3 (dashboard) → CG-4 (CLI) → CG-5 (MCP tools) → CG-6
 
 ## How It Works
 
+### One full lifecycle, end to end
+
+What you actually do, in order:
+
+1. **Install** — `docs/install.md`. Either download a Desktop installer
+   from the [Releases page](https://github.com/MITPOAI/N0Tune/releases/latest)
+   (Windows / macOS / Linux) or `docker compose up` the Gateway. Both
+   surfaces share the same data model.
+2. **Set up your provider** — open Provider Settings, paste your key for
+   GPT / Claude / Gemini / OpenRouter / Ollama / LM Studio / anything
+   OpenAI-compatible. The key goes to the OS keychain (Desktop) or your
+   `.env` (Gateway). N0Tune never touches the key after that — it's
+   passed straight to the upstream provider.
+3. **Set up your persona** — choose tone, depth, format, and what to
+   avoid (e.g. "no hype, no giant prompts"). Saved as a per-user style
+   profile.
+4. **Store as you go** — three ways memories enter the system:
+   - **Explicit:** click "Save memory" or call `n0tune_save_memory`
+     from inside Claude Code / Cursor.
+   - **Implicit:** N0Tune scans every message you send for
+     preference-shaped statements ("I prefer X", "always Y") and adds
+     them as candidate memories.
+   - **From files:** point N0Tune at a folder; it chunks, embeds, and
+     indexes the contents as a queryable document store.
+5. **Learn over time** — memory consolidation runs automatically as a
+   background task. When you accumulate similar memories, the
+   continual-learning loop clusters them, writes a denser summary, and
+   marks the originals deprecated. Your context stays small even as
+   your history grows.
+6. **Tailor every request (no fine-tuning)** — for each message, the
+   Context Compiler picks the relevant memories + file chunks + your
+   persona, fits them inside the token budget, drops anything
+   high-injection-risk, checks the semantic cache, and writes a small
+   prompt.
+7. **Use** — the compiled prompt goes to the provider you chose. The
+   model never knows N0Tune is in the loop. Same model, same question,
+   personal answer.
+
+In short: **install → keys + persona → store → learn → tailor → use**.
+You do steps 1–3 once. Step 4 happens as you work. Steps 5–7 happen
+automatically on every request.
+
+### The per-request flow
+
 ```mermaid
 flowchart TD
     User["User"] --> Desktop["N0Tune Desktop"]
     Desktop --> Local["Local memory + files + style"]
     Local --> Compiler["Context Compiler"]
-    Compiler --> Router["Provider Router"]
+    Compiler --> Cache{Semantic cache hit?}
+    Cache -->|yes| Cached["Return cached answer"]
+    Cache -->|no| Router["Provider Router"]
     Router --> Models["GPT / Claude / Gemini / Qwen / OpenRouter / Ollama"]
+    Models --> Learn["Background: consolidate similar memories"]
 ```
 
 For every request, N0Tune decides:
@@ -130,7 +177,11 @@ For every request, N0Tune decides:
 - whether a semantic cache entry can be reused
 - what compact context should be sent to the selected model
 
-The selected model receives a normal prompt with useful context. The model weights do not change.
+After the response is returned, a background task runs
+[memory consolidation](docs/memory-lifecycle.md) when the user has
+accumulated enough similar memories — this is the continual-learning
+loop. The selected model receives a normal prompt with useful context.
+**Model weights do not change.**
 
 ## Fine-Tuning vs N0Tune
 
