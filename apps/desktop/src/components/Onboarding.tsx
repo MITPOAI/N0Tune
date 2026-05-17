@@ -134,7 +134,7 @@ export function Onboarding({ persona, onComplete }: OnboardingProps) {
 
         <div className="form-actions">
           <button type="submit" disabled={submitting} className="primary">
-            {submitting ? "Saving…" : "Start chatting"}
+            {submitting ? "Saving…" : "Open N0Tune"}
           </button>
         </div>
       </form>

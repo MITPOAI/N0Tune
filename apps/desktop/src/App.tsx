@@ -82,6 +82,15 @@ export function App() {
     })();
   }, [backend]);
 
+  // Auto-dismiss the notice after a few seconds so it doesn't follow
+  // the user across rooms. Clicking "dismiss" still works for immediate
+  // close; this just stops stale notices from looking persistent.
+  useEffect(() => {
+    if (notice === null) return undefined;
+    const timer = window.setTimeout(() => setNotice(null), 4000);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
+
   async function handleChat(message: string): Promise<ChatResponse> {
     const response = await backend.chat(message);
     setLastTrace(response.trace);

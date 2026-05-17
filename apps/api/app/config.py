@@ -15,7 +15,22 @@ class Settings(BaseSettings):
         "postgresql+psycopg://n0tune:n0tune_dev_password_change_me@postgres:5432/n0tune"
     )
     redis_url: str = "redis://redis:6379/0"
-    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
+    cors_origins: list[str] = Field(
+        default_factory=lambda: [
+            # Dashboard (Next.js dev + docker).
+            "http://localhost:3000",
+            # Desktop dev (Vite). The Tauri renderer talks to the Gateway
+            # from a different origin than the dashboard, so it needs its
+            # own CORS allowance.
+            "http://localhost:1420",
+            "http://127.0.0.1:1420",
+            # Desktop production (Tauri bundles the renderer under a
+            # custom scheme; both shapes appear in different Tauri
+            # versions / platforms).
+            "tauri://localhost",
+            "https://tauri.localhost",
+        ]
+    )
     request_id_header: str = "X-Request-ID"
     demo_app_id: str = "demo"
     app_api_key: str = "replace-with-local-development-key"

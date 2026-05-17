@@ -299,7 +299,10 @@ button.primary:disabled {
 
 .chip--active {
   background: var(--ink);
-  color: #fff;
+  /* Use --bg (not literal #fff) so the chip text inverts cleanly in dark
+     mode. Light: dark chip with cream text. Dark: cream chip with dark
+     text. */
+  color: var(--bg);
   border-color: var(--ink);
 }
 

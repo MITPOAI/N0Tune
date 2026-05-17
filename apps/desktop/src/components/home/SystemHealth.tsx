@@ -39,7 +39,7 @@ export function SystemHealth({
       <Pill
         ok={stats.chats > 0}
         label="Chats"
-        value={`${stats.chats} this session`}
+        value={`${stats.chats}`}
       />
       <Pill
         ok={stats.warningCount === 0}
