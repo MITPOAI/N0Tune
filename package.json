@@ -18,7 +18,7 @@
     "build": "npm run build --workspaces --if-present",
     "format:check": "prettier --check \"**/*.{md,json,ts,tsx,js,mjs,css,yml,yaml}\"",
     "mcp:sync": "node scripts/sync-mcp-config.mjs",
-    "postinstall": "node scripts/sync-mcp-config.mjs"
+    "postinstall": "node -e \"try{require('node:fs').accessSync('scripts/sync-mcp-config.mjs');require('node:child_process').execFileSync(process.execPath,['scripts/sync-mcp-config.mjs'],{stdio:'inherit'})}catch(e){if(e.code!=='ENOENT')throw e}\""
   },
   "devDependencies": {
     "prettier": "^3.3.3"
