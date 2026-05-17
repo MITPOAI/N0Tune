@@ -89,13 +89,19 @@ JSON
 Restart the Claude Code session. The `/mcp` command should list `n0tune`
 and its seven tools.
 
-### Worktree gotcha
+### Sparse-worktree gotcha
 
 Claude Code reads `.claude/mcp.json` from its **current working
 directory** at session start. It does not walk up the tree to find a
 parent repo's config. So if you open Claude Code with CWD inside
 `.claude/worktrees/<branch>/`, the file at the repo root will not
 load and the `n0tune_*` tools will not appear.
+
+A second twist: Claude-Code-managed worktrees under `.claude/worktrees/`
+are a **sparse copy** of the project — they include `packages/` and
+`scripts/` but not `integrations/`. The relative path
+`./integrations/mcp-server/src/server.mjs` from the canonical config
+therefore doesn't resolve inside a worktree.
 
 Fix: keep one canonical `.claude/mcp.json` at the repo root, then run
 
@@ -104,9 +110,40 @@ n0tune mcp sync          # or:  npm install   (postinstall does the same)
 ```
 
 …which copies the file into every `.claude/worktrees/*/.claude/`
-directory that doesn't already have its own. The sync is idempotent
-and never overwrites a worktree's existing config, so per-worktree
-tweaks (different `N0TUNE_USER_ID`, different base URL) are safe.
+directory that doesn't already have its own. The sync **automatically
+rewrites relative `args` paths to absolute paths** when the target
+worktree is a sparse copy that doesn't contain the referenced files,
+so the MCP server still spawns correctly. The sync is idempotent and
+never overwrites a worktree's existing config, so per-worktree tweaks
+(different `N0TUNE_USER_ID`, different base URL) are safe.
+
+### One-screen restart procedure
+
+```bash
+# 1. Make sure the Gateway is running
+docker compose up -d --wait
+curl -fsS http://localhost:8000/health   # → {"status":"ok",...}
+
+# 2. Sync the MCP config into every worktree (including this one)
+n0tune mcp sync
+# or just: npm install        (postinstall runs the sync)
+
+# 3. Close this Claude Code session.
+
+# 4. Open Claude Code again from the directory that contains
+#    .claude/mcp.json. Either the repo root or any synced worktree.
+
+# 5. In the new session, type:
+/mcp
+# You should see `n0tune` listed with seven tools.
+
+# 6. Smoke-test from inside Claude:
+#    "Use n0tune_search_memories to find what I've stored about my code style."
+#    Claude will call the tool; you'll see the matching memories.
+```
+
+If `/mcp` still says no servers: the most common cause is the Gateway
+isn't running. `curl http://localhost:8000/health` to verify.
 
 Or globally (`~/.claude/mcp.json` with the same `mcpServers` block — use
 an absolute path for `args`).

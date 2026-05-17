@@ -1,6 +1,6 @@
 {
   "name": "@n0tune/desktop",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "description": "N0Tune Desktop — fine-tune any AI without fine-tuning.",
   "type": "module",

@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import get_settings
+from app.routes.alignment import router as alignment_router
 from app.routes.api_keys import router as api_keys_router
 from app.routes.audit_logs import router as audit_logs_router
 from app.routes.cache import router as cache_router
@@ -81,3 +82,4 @@ app.include_router(openai_proxy_router)
 app.include_router(cache_router)
 app.include_router(api_keys_router)
 app.include_router(audit_logs_router)
+app.include_router(alignment_router)

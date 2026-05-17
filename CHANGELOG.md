@@ -2,6 +2,45 @@
 
 All notable changes to N0Tune will be documented here.
 
+## 0.1.3 - 2026-05-17
+
+A "make it smart and wire it" release. v0.1.2 made N0Tune downloadable;
+v0.1.3 makes it **actually work** in a live Claude Code session and adds
+a real alignment layer. Full notes in
+[docs/releases/v0.1.3.md](docs/releases/v0.1.3.md).
+
+### Smarter retrieval
+
+- State weighting in `effective_confidence`: confirmed → 1.10×, active
+  → 1.0×, candidate → 0.80× (clamped). Confirmed memories now rank
+  above unaffirmed ones with the same base confidence.
+- Type-aware decay half-life: preferences 180d, facts 90d, project
+  state 30d. Was a flat 60d.
+- MMR diversity pass in the context compiler. Drops near-duplicates
+  (cosine ≥ 0.92) before the token-budget step; surfaces the drops in
+  the trace as `near-duplicate of mem_<id>`.
+
+### Context Guard CG-1 + CG-2 + CG-5 minimal
+
+- `alignment_rules` table + alembic migration (`20260519_0004`).
+- Rule engine in `apps/api/app/services/alignment/rules.py`. Six rule
+  types + always-on secret detector. Pure deterministic. 18 unit tests.
+- API: `POST /v1/alignment/check`, `GET /v1/alignment/rules`,
+  `POST /v1/alignment/rules` (admin-only). 5 integration tests.
+- MCP: `n0tune_alignment_check` is now the 8th tool on the server.
+- Seed script: `scripts/seed-alignment-rules.py` (idempotent, 7 rules).
+
+### Wiring fix for Claude Code worktrees
+
+`scripts/sync-mcp-config.mjs` now rewrites relative args to absolute
+paths when the target worktree is a sparse copy missing the referenced
+files. Fixes the case where Claude Code launched from a worktree could
+not actually spawn the MCP server.
+
+[`docs/wire-to-claude.md`](docs/wire-to-claude.md) gets a one-screen
+restart procedure walking through Gateway boot → sync → restart →
+verify with `/mcp`.
+
 ## Unreleased
 
 ### Added — Context Guard (Phase CG-0, design only)

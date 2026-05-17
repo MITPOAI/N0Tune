@@ -29,9 +29,50 @@ from app.services.security.auth import ensure_user
 
 UTC = timezone.utc
 
+# Two memories are "near-duplicates" when their text embeddings are above
+# this cosine similarity. The MMR pass drops anything past the first one
+# in a near-duplicate cluster — keeping prompt space for diverse signals.
+MMR_SIMILARITY_THRESHOLD = 0.92
+
 
 def _is_active_memory(memory: Memory, now: datetime) -> bool:
     return is_retrievable(memory, now=now)
+
+
+def _diversify_memories(
+    scored: list[tuple[Memory, float]],
+    *,
+    threshold: float = MMR_SIMILARITY_THRESHOLD,
+) -> tuple[list[tuple[Memory, float]], list[tuple[Memory, str]]]:
+    """Greedy max-marginal-relevance pass.
+
+    Walks the already-ranked list in score order and drops any memory
+    whose embedding is too close to one we've already selected. The
+    intent is to stop the compiler from spending its token budget on
+    five paraphrases of the same fact — common after consolidation
+    misses or repeated user statements.
+
+    Returns ``(kept, dropped)`` so the caller can surface the dropped
+    memories in the context trace as ``near-duplicate of <other_id>``.
+    """
+    kept: list[tuple[Memory, float]] = []
+    dropped: list[tuple[Memory, str]] = []
+    for memory, score in scored:
+        if score <= 0:
+            continue
+        emb = memory.embedding
+        duplicate_of: str | None = None
+        for prior, _ in kept:
+            if prior.embedding is None or emb is None:
+                continue
+            if cosine_similarity(prior.embedding, emb) >= threshold:
+                duplicate_of = prior.id
+                break
+        if duplicate_of is not None:
+            dropped.append((memory, f"near-duplicate of {duplicate_of}"))
+        else:
+            kept.append((memory, score))
+    return kept, dropped
 
 
 def get_style_profile(session: Session, app_id: str, user_id: str) -> StyleProfile:
@@ -94,6 +135,9 @@ def compile_context(
         key=lambda item: item[1],
         reverse=True,
     )
+    # MMR diversity — keep the highest-scoring memory in each near-duplicate
+    # cluster so we spend the token budget on diverse signals, not paraphrases.
+    scored_memories, dropped_duplicates = _diversify_memories(scored_memories)
 
     chunk_candidates = session.scalars(
         select(DocumentChunk)
@@ -122,6 +166,11 @@ def compile_context(
     selected_chunks: list[ChunkResponse] = []
     warnings: list[str] = []
     trace = ContextTrace()
+    # Record memories dropped as near-duplicates before the token-budget
+    # pass even sees them. Lets the dashboard's trace panel show "X memories
+    # collapsed via MMR" without re-running the diversity check.
+    for memory, reason in dropped_duplicates:
+        trace.excluded.append(TraceItem(type="memory", id=memory.id, reason=reason))
 
     base_sections = [
         "System: You are a helpful assistant using N0Tune compiled context.",

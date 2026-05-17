@@ -47,6 +47,50 @@ function resolveRepoRoot() {
   return path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 }
 
+/**
+ * Rewrite any relative path in `args` to an absolute path under the
+ * repo root, but only if (a) the path looks like a project-relative
+ * reference (starts with `./` or `../`) and (b) the target file does
+ * not exist at the same relative location from the worktree.
+ *
+ * Why: Claude-Code-managed "worktrees" under `.claude/worktrees/` are
+ * a sparse copy of the project. They contain a subset of the repo
+ * (`packages/`, `scripts/`, root files) but typically NOT
+ * `integrations/` or `apps/`. So the relative path that works from
+ * the repo root (`./integrations/mcp-server/src/server.mjs`) is
+ * broken from a worktree's perspective and Claude Code's MCP launch
+ * fails immediately. Rewriting to an absolute path under the repo
+ * root fixes it without changing the canonical config.
+ */
+function rewriteArgsForWorktree(config, repoRoot, worktreeDir) {
+  if (!config?.mcpServers || typeof config.mcpServers !== "object") {
+    return config;
+  }
+  const rewritten = { ...config, mcpServers: { ...config.mcpServers } };
+  for (const [name, server] of Object.entries(rewritten.mcpServers)) {
+    if (!Array.isArray(server?.args)) continue;
+    const newArgs = server.args.map((arg) => {
+      if (typeof arg !== "string") return arg;
+      if (!arg.startsWith("./") && !arg.startsWith("../")) return arg;
+      const worktreeResolved = path.resolve(worktreeDir, arg);
+      if (fs.existsSync(worktreeResolved)) {
+        // The worktree happens to have the file at the same relative
+        // path. Leave the relative form alone.
+        return arg;
+      }
+      const rootResolved = path.resolve(repoRoot, arg);
+      if (fs.existsSync(rootResolved)) {
+        return rootResolved;
+      }
+      // Last resort: leave the original. Better to fail loudly with
+      // a clear "file not found" than silently rewrite to nothing.
+      return arg;
+    });
+    rewritten.mcpServers[name] = { ...server, args: newArgs };
+  }
+  return rewritten;
+}
+
 function main() {
   const root = resolveRepoRoot();
   const sourcePath = path.join(root, ".claude", "mcp.json");
@@ -65,8 +109,22 @@ function main() {
   }
 
   const sourceContent = fs.readFileSync(sourcePath, "utf8");
+  let sourceConfig;
+  try {
+    sourceConfig = JSON.parse(sourceContent);
+  } catch (err) {
+    // The canonical config is malformed; don't propagate that into
+    // every worktree. Fail loudly so the user knows.
+    process.stderr.write(
+      `n0tune mcp sync: failed to parse ${sourcePath}: ${err?.message ?? err}\n`,
+    );
+    process.exitCode = 1;
+    return;
+  }
+
   let synced = 0;
   let skipped = 0;
+  let rewroteAnyPaths = false;
 
   for (const entry of fs.readdirSync(worktreesRoot, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
@@ -74,22 +132,43 @@ function main() {
     const worktreeClaudeDir = path.join(worktreeDir, ".claude");
     const targetPath = path.join(worktreeClaudeDir, "mcp.json");
 
+    const adjustedConfig = rewriteArgsForWorktree(
+      sourceConfig,
+      root,
+      worktreeDir,
+    );
+    const adjustedJson = JSON.stringify(adjustedConfig, null, 2) + "\n";
+
     if (fs.existsSync(targetPath)) {
-      // Respect per-worktree overrides — never clobber.
-      skipped += 1;
+      // Already present. If it matches what the sync would produce,
+      // skip silently. If it differs (manual edit OR stale sync from
+      // a previous version of this script), respect the user's copy
+      // and skip — never clobber.
+      const existing = fs.readFileSync(targetPath, "utf8");
+      if (existing.trim() === adjustedJson.trim()) {
+        // Identical, no work to do.
+      } else {
+        skipped += 1;
+      }
       continue;
     }
 
     fs.mkdirSync(worktreeClaudeDir, { recursive: true });
-    fs.writeFileSync(targetPath, sourceContent, "utf8");
+    fs.writeFileSync(targetPath, adjustedJson, "utf8");
     synced += 1;
+    if (adjustedJson !== sourceContent) {
+      rewroteAnyPaths = true;
+    }
   }
 
   if (synced > 0) {
+    const suffix = rewroteAnyPaths
+      ? " (rewrote relative args to absolute paths for sparse worktrees)"
+      : "";
     process.stdout.write(
       `n0tune mcp sync: copied .claude/mcp.json into ${synced} worktree(s)` +
         (skipped > 0 ? `, skipped ${skipped} with existing config` : "") +
-        "\n",
+        `${suffix}\n`,
     );
   }
   // When nothing changed, stay silent so the npm postinstall hook

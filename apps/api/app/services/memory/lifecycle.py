@@ -33,6 +33,25 @@ RETRIEVABLE_STATES = frozenset(
     {MemoryState.ACTIVE.value, MemoryState.CONFIRMED.value, MemoryState.CANDIDATE.value}
 )
 
+# Per-state weight applied on top of confidence + decay. Confirmed memories
+# (explicitly affirmed by the user, or written by the consolidation pass)
+# rank above plain active ones, which rank above candidates not yet promoted.
+STATE_WEIGHT: dict[str, float] = {
+    MemoryState.CONFIRMED.value: 1.10,
+    MemoryState.ACTIVE.value: 1.00,
+    MemoryState.CANDIDATE.value: 0.80,
+}
+
+# Per-type decay half-life override. Preferences (style, persona-like
+# facts about the user) age slowly because they're stable traits;
+# project-state memories age faster because they reflect changing work.
+TYPE_HALF_LIFE_DAYS: dict[str, float] = {
+    "preference": 180.0,
+    "fact": 90.0,
+    "project": 30.0,
+}
+DEFAULT_HALF_LIFE_DAYS = 60.0
+
 
 def is_retrievable(memory: Memory, now: datetime | None = None) -> bool:
     """A memory is eligible for context inclusion when it isn't deleted, expired, or deprecated."""
@@ -50,29 +69,48 @@ def is_retrievable(memory: Memory, now: datetime | None = None) -> bool:
     return True
 
 
-def decay_factor(memory: Memory, now: datetime | None = None, half_life_days: float = 60.0) -> float:
+def decay_factor(
+    memory: Memory,
+    now: datetime | None = None,
+    half_life_days: float | None = None,
+) -> float:
     """Time-decay multiplier applied to confidence at read time.
 
     Confirmed and confidence-1.0 memories should age slowly, so we anchor decay
     to either ``last_used_at`` or ``last_confirmed_at``. Memories that have
     never been used or confirmed fall back to ``updated_at``.
+
+    ``half_life_days`` defaults to a type-specific value
+    (``TYPE_HALF_LIFE_DAYS``) — preferences age slowly, project state ages
+    fast. Pass an explicit float to override.
     """
     now = now or datetime.now(UTC)
     anchor = memory.last_confirmed_at or memory.last_used_at or memory.updated_at
     if anchor.tzinfo is None:
         anchor = anchor.replace(tzinfo=UTC)
     age_days = max(0.0, (now - anchor).total_seconds() / 86_400.0)
+    if half_life_days is None:
+        half_life_days = TYPE_HALF_LIFE_DAYS.get(memory.type, DEFAULT_HALF_LIFE_DAYS)
     if half_life_days <= 0:
         return 1.0
     return exp(-age_days * (0.6931471805599453 / half_life_days))
 
 
 def effective_confidence(memory: Memory, now: datetime | None = None) -> float:
-    """Confidence after time-decay. ``confirmed`` state pins floor at ``confidence``."""
+    """Confidence after time-decay and state-weighting.
+
+    Calculation:
+      base × state_weight × decay
+
+    ``confirmed`` memories skip the decay component (they're explicitly
+    affirmed and shouldn't fade) but still take the state-weight boost.
+    The result is clamped to [0, 1] so it remains a valid confidence.
+    """
     base = max(0.0, min(1.0, memory.confidence))
+    state_w = STATE_WEIGHT.get(memory.state, 1.0)
     if memory.state == MemoryState.CONFIRMED.value:
-        return base
-    return base * decay_factor(memory, now=now)
+        return min(1.0, base * state_w)
+    return min(1.0, base * state_w * decay_factor(memory, now=now))
 
 
 def mark_used(memory: Memory, now: datetime | None = None) -> None:

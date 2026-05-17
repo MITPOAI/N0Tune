@@ -14,6 +14,7 @@ describe("N0Tune MCP server", () => {
       "n0tune_context_preview",
       "n0tune_forget_memory",
       "n0tune_get_persona",
+      "n0tune_alignment_check",
     ]);
   });
 });

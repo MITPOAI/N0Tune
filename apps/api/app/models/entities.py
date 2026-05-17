@@ -259,3 +259,35 @@ class AuditLog(Base):
     resource_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     metadata_json: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+
+
+class AlignmentRule(Base):
+    """A Context Guard alignment rule.
+
+    A row defines one check the rule engine applies to a proposed agent
+    response, plan, or diff. See ``docs/alignment-checker.md`` for the
+    schema rationale; in short, each rule has a ``rule_type`` (terminology,
+    phase_scope, security, ...), an optional regex ``pattern`` for fast
+    text matching, and ``metadata_json`` for type-specific extras
+    (allowed_paths for phase_scope, expected benchmark values, etc).
+    Rule severity drives whether a hit blocks (``critical``), warns
+    strongly (``high``), or is advisory (``medium``/``low``).
+    """
+
+    __tablename__ = "alignment_rules"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: new_id("rul"))
+    app_id: Mapped[str] = mapped_column(
+        String(128), ForeignKey("apps.id", ondelete="CASCADE"), index=True
+    )
+    rule_type: Mapped[str] = mapped_column(String(32), index=True)
+    title: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str] = mapped_column(Text)
+    severity: Mapped[str] = mapped_column(String(16))  # low | medium | high | critical
+    pattern: Mapped[str | None] = mapped_column(Text, nullable=True)
+    metadata_json: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=now_utc, onupdate=now_utc
+    )

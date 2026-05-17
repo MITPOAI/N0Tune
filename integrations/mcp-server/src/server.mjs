@@ -98,6 +98,39 @@ export const toolDefinitions = [
       required: ["user_id"],
     },
   },
+  {
+    name: "n0tune_alignment_check",
+    description:
+      "Context Guard: check whether a proposed agent response, plan, or diff " +
+      "stays aligned with stored N0Tune project rules (phase scope, terminology, " +
+      "security, benchmark facts, secret patterns). Returns a structured " +
+      "AlignmentReport. Call this BEFORE committing claims to the user — if " +
+      "`aligned: false`, revise the plan first.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        app_id: { type: "string" },
+        user_id: { type: "string" },
+        phase: { type: "string", description: "Current roadmap phase, e.g. 'CG-1'." },
+        content: { type: "string", description: "The proposed response or plan." },
+        claims: {
+          type: "array",
+          items: { type: "string" },
+          description: "Optional explicit list of factual claims the response makes.",
+        },
+        changed_files: {
+          type: "array",
+          items: { type: "string" },
+          description: "Optional list of files the agent intends to change.",
+        },
+        strict: {
+          type: "boolean",
+          description: "Treat medium-severity findings as blockers (default false).",
+        },
+      },
+      required: ["content"],
+    },
+  },
 ];
 
 const apiBaseUrl = process.env.N0TUNE_API_BASE_URL ?? "http://localhost:8000";
@@ -168,6 +201,22 @@ export async function callTool(name, args = {}) {
           "NOT included; use n0tune_search_memories with explicit consent for those.",
       };
     }
+    case "n0tune_alignment_check":
+      // Context Guard. POST the proposed content to the Gateway's
+      // /v1/alignment/check; the engine runs deterministically against
+      // the stored rules for this app and returns an AlignmentReport.
+      return api("/v1/alignment/check", {
+        method: "POST",
+        body: {
+          app_id: args.app_id ?? defaultAppId,
+          user_id: args.user_id ?? "claude-code",
+          phase: args.phase,
+          content: args.content ?? "",
+          claims: Array.isArray(args.claims) ? args.claims : [],
+          changed_files: Array.isArray(args.changed_files) ? args.changed_files : [],
+          strict: Boolean(args.strict),
+        },
+      });
     default:
       throw new Error(`Unknown N0Tune MCP tool: ${name}`);
   }

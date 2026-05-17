@@ -68,14 +68,23 @@ def test_decay_factor_drops_with_age_and_floors_at_zero() -> None:
     assert young_score > old_score > 0
 
 
-def test_confirmed_state_pins_confidence_at_base() -> None:
+def test_confirmed_state_skips_decay_and_gets_state_boost() -> None:
+    # Confirmed memories skip the decay component AND receive the
+    # CONFIRMED state-weight multiplier (currently 1.10), clamped to
+    # [0, 1]. Using base=1.0 keeps the math simple: 1.0 × 1.10 → clamp → 1.0.
     confirmed = _make_memory(
         state=MemoryState.CONFIRMED.value,
-        confidence=0.9,
+        confidence=1.0,
         updated_at=datetime.now(UTC) - timedelta(days=200),
     )
-    # Without confirmed pinning, decay would slash this. Pinning keeps it at 0.9.
-    assert effective_confidence(confirmed) == 0.9
+    # Without confirmed pinning, decay would slash this; CONFIRMED skips decay.
+    assert effective_confidence(confirmed) == 1.0
+
+    # A confirmed memory with confidence 0.8 should rank above an active
+    # one with the same base because of the state-weight boost.
+    confirmed_mid = _make_memory(state=MemoryState.CONFIRMED.value, confidence=0.8)
+    active_mid = _make_memory(state=MemoryState.ACTIVE.value, confidence=0.8)
+    assert effective_confidence(confirmed_mid) > effective_confidence(active_mid)
 
 
 def test_active_memory_confidence_decays() -> None:
