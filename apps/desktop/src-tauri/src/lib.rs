@@ -161,7 +161,7 @@ pub fn run() {
 
             TrayIconBuilder::with_id("n0tune-tray")
                 .icon(app.default_window_icon().unwrap().clone())
-                .tooltip("N0Tune — armor for your AI tools")
+                .tooltip("N0Tune — fine-tune any AI, without fine-tuning")
                 .menu(&menu)
                 .show_menu_on_left_click(false)
                 .on_menu_event(move |app, event| {
