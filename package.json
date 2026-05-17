@@ -1,6 +1,6 @@
 {
   "name": "n0tune",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": true,
   "description": "N0Tune monorepo: context compiler and AI memory gateway.",
   "workspaces": [

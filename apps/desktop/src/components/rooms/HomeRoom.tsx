@@ -97,6 +97,8 @@ export function HomeRoom({
           provider={provider}
         />
 
+        <SavingsHero stats={stats} />
+
         <PipelineDiagram stage={stage} />
 
         <ActivityFeed activity={activity} onGoto={onGoto} />
@@ -152,5 +154,56 @@ function DoorCard({ icon, label, hint, onClick }: DoorCardProps) {
       <span className="home-door-label">{label}</span>
       <span className="home-door-hint">{hint}</span>
     </button>
+  );
+}
+
+interface SavingsHeroProps {
+  stats: BackendStats;
+}
+
+/**
+ * The "is this worth my time?" headline. Big tabular numbers. The
+ * answer is right in front of the user the moment they open the app,
+ * not buried in a debug drawer.
+ *
+ * Math:
+ *   savedPct = totalTokensSaved / totalNaiveTokens
+ *
+ * We deliberately *don't* show a percentage when the user has zero
+ * chats yet — pretending we've saved them tokens before they've
+ * even asked anything is dishonest.
+ */
+function SavingsHero({ stats }: SavingsHeroProps) {
+  if (stats.chats === 0) {
+    return (
+      <section className="savings-hero savings-hero--empty">
+        <span className="muted small">Token savings</span>
+        <p className="savings-hero-empty">
+          Send your first message in <strong>Chat</strong> — we'll show
+          the saved tokens here, live, every request.
+        </p>
+      </section>
+    );
+  }
+  const saved = stats.totalTokensSaved;
+  const naive = stats.totalNaiveTokens || 1;
+  const pct = Math.round((saved / naive) * 100);
+  return (
+    <section className="savings-hero">
+      <div className="savings-hero-block">
+        <span className="muted small">Tokens saved this session</span>
+        <strong className="savings-hero-value">{saved.toLocaleString()}</strong>
+      </div>
+      <div className="savings-hero-block savings-hero-block--accent">
+        <span className="muted small">vs naive baseline</span>
+        <strong className="savings-hero-value">{pct}%</strong>
+      </div>
+      <div className="savings-hero-block">
+        <span className="muted small">Average per request</span>
+        <strong className="savings-hero-value">
+          {Math.round(saved / stats.chats).toLocaleString()}
+        </strong>
+      </div>
+    </section>
   );
 }
