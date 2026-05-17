@@ -248,6 +248,149 @@ Checklist:
 - release checklist
 - known limitations
 
+## Phase CG — Context Guard (alignment + grounding)
+
+Goal: add an alignment layer that catches AI-agent drift against the
+stored N0Tune plan, rules, and benchmarks. Detail in
+[`docs/context-guard.md`](context-guard.md) (user-facing) and
+[`docs/alignment-checker.md`](alignment-checker.md) (technical).
+
+This phase is **separate from** Phases A–J above. CG can start in
+parallel with any open phase because it adds a new surface
+(`/v1/alignment/check`) without changing the existing memory / compiler
+/ provider routing.
+
+Sub-phases:
+
+### CG-0 — Design only (v0.1.2, current)
+
+Goal: contributors and AI agents share one mental model of Context
+Guard before any code lands.
+
+Tasks:
+
+- write `docs/context-guard.md`, `docs/alignment-checker.md`,
+  `docs/dogfooding-alignment.md`
+- add a Context Guard section to README
+- add this Phase CG block to the roadmap
+- add a Context Guard component sketch to `docs/architecture.md`
+- add the Context Guard test plan to `docs/testing.md`
+- add a CHANGELOG entry under "Unreleased"
+
+Acceptance:
+
+- docs explain what Context Guard does and why
+- no code claims are made
+- existing tests still pass
+- semantic cache + context compiler are not touched
+
+### CG-1 — Rule engine
+
+Goal: deterministic rule checks without LLM calls.
+
+Tasks:
+
+- new module `apps/api/app/services/alignment/rules.py`
+- new model `apps/api/app/models/entities.py::AlignmentRule`
+- alembic migration for the `alignment_rules` table
+- forbidden-phrase, phase-scope, security-pattern, benchmark-claim
+  rules with regex
+- unit tests for each rule type
+- seed a starter rule set under `scripts/seed-alignment-rules.py`
+
+Acceptance:
+
+- `rule_engine.run(rules, content, claims, changed_files)` returns a
+  list of `AlignmentIssue` records
+- 100% deterministic, no network egress
+- tests cover all six rule types
+
+### CG-2 — API endpoint
+
+Goal: `/v1/alignment/check` over the rule engine + retrieval-check.
+
+Tasks:
+
+- `POST /v1/alignment/check`, `POST /v1/alignment/check-diff`,
+  `GET/POST /v1/alignment/rules`
+- wire to retrieval via the existing context compiler
+- API tests
+- OpenAPI schema update
+
+Acceptance:
+
+- valid `AlignmentReport` returned for every request
+- `/check` and `/check-diff` cover the eight CG-6 fixtures
+- admin RBAC enforced on `POST /v1/alignment/rules`
+
+### CG-3 — Dashboard pages
+
+Goal: human-runnable Context Guard + read-only Project Rules viewer.
+
+Tasks:
+
+- "Context Guard" tab in the existing dashboard
+- "Project Rules" tab listing the active rules
+- Playwright e2e for the Context Guard happy path
+
+Acceptance:
+
+- a user can paste content, hit "Run alignment check", see the report
+- rules tab shows the seeded rule set
+- e2e green
+
+### CG-4 — CLI
+
+Goal: `n0tune align …` commands.
+
+Tasks:
+
+- `n0tune align check`, `n0tune align diff`, `n0tune align rules`,
+  `n0tune align doctor`
+- JSON output mode for scripting
+- vitest coverage
+
+Acceptance:
+
+- the CG-6 dogfooding pass can be driven entirely from the CLI
+
+### CG-5 — MCP tools
+
+Goal: agents call alignment from inside their own session.
+
+Tasks:
+
+- `n0tune_alignment_check`, `n0tune_get_current_plan`,
+  `n0tune_remind_context` in the MCP server
+- update `docs/wire-to-claude.md` with the agent workflow
+
+Acceptance:
+
+- Claude / Cursor / Codex can call all three tools
+- the smoke test in `integrations/mcp-server/tests/` covers them
+
+### CG-6 — Dogfooding pass
+
+Goal: run Context Guard against N0Tune's own history per
+[`docs/dogfooding-alignment.md`](dogfooding-alignment.md).
+
+Tasks:
+
+- run the eight fixture artifacts
+- aggregate results into `docs/releases/v0.2.0-cg-dogfooding.md`
+- tune rules to eliminate false positives observed
+- add missing rules to catch false negatives observed
+- ship the final seed rule set with the next release
+
+Acceptance:
+
+- false-positive ceiling: README, product-direction, v0.1.2 release notes
+  all return `aligned: true`
+- recall floor: v0.1.0 + v0.1.1 release bodies flagged for the framing
+  drift documented in v0.1.2
+- synthetic positives: terminology, phase-drift, and benchmark fixtures
+  all return the matching issue type
+
 ## Deferred Until Users Ask
 
 - Helm chart
@@ -259,3 +402,4 @@ Checklist:
 - complex multi-agent orchestration
 - graph-based memory
 - bring-your-own-vector-store for Desktop
+- LLM judge mode for Context Guard (post-CG-5 if there's demand)

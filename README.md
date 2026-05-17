@@ -77,6 +77,39 @@ N0Tune is **not**:
 The public surface is **Desktop + MCP**. Gateway powers it underneath
 and stays available as a server mode for teams.
 
+## Context Guard (design phase)
+
+N0Tune can check whether an AI agent stays aligned with your project
+plan. **Context Guard** reads the project's stored memories, indexed
+docs, current roadmap phase, and security rules, then tells you when a
+proposed plan, response, or diff has drifted away.
+
+It catches things like:
+
+- hallucinated claims ("tests pass", "all providers supported")
+- phase drift (implementing v0.2 features during a v0.1 phase)
+- terminology mistakes (saying N0Tune "fine-tunes" any model)
+- benchmark inflation (claiming 80% token savings when the doc says 17.4%)
+- security violations (binding MCP to 0.0.0.0, storing secrets as memories)
+- documentation/implementation mismatch
+
+Example:
+
+> Agent: "N0Tune fine-tunes GPT using local memory."
+>
+> Context Guard: `terminology_error (high)` — "N0Tune context-tunes
+> models. It does not change model weights." (cites
+> `docs/product-direction.md`)
+
+Status: **Phase CG-0 design only.** The spec is documented; no engine
+code ships yet. Implementation lands across CG-1 (rule engine) →
+CG-2 (API) → CG-3 (dashboard) → CG-4 (CLI) → CG-5 (MCP tools) → CG-6
+(dogfooding pass). Full design:
+[`docs/context-guard.md`](docs/context-guard.md) (user-facing),
+[`docs/alignment-checker.md`](docs/alignment-checker.md) (technical),
+[`docs/dogfooding-alignment.md`](docs/dogfooding-alignment.md)
+(dogfooding agenda).
+
 ## How It Works
 
 ```mermaid

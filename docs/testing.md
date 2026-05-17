@@ -190,8 +190,37 @@ These run in CI but tolerate failures (`continue-on-error: true`) so a single up
 3. Name the test for the behavior, not the function: `test_cache_ttl_expiration_forces_miss`, not `test_lookup_cache`.
 4. If the test boots Docker, gate it behind a marker or an env flag so `pytest` defaults stay fast.
 
+## Planned: Context Guard tests (Phase CG)
+
+Context Guard is design-only at v0.1.2. When CG-1 onward lands, the
+test plan is:
+
+| # | Test                                                                            | Layer                                 |
+| - | ------------------------------------------------------------------------------- | ------------------------------------- |
+| 1 | `terminology` rule catches "fine-tunes GPT" / "trains Claude"                   | rule_engine unit (CG-1)               |
+| 2 | `phase_scope` blocks Desktop changes during CG-0                                | rule_engine unit (CG-1)               |
+| 3 | `security` flags MCP bound to `0.0.0.0`                                         | rule_engine unit (CG-1)               |
+| 4 | `forbidden_claim` flags "tests pass" without a `tests/` file in `changed_files` | rule_engine + diff parser (CG-1)      |
+| 5 | `benchmark_mismatch` flags "80% savings" vs the 17.4% in `docs/benchmarks.md`   | retrieval_check integration (CG-2)    |
+| 6 | `memory_conflict` flags a claim contradicting a stored memory                   | retrieval_check integration (CG-2)    |
+| 7 | `secret_storage` blocks `OPENAI_API_KEY=sk-...` as a memory                     | reuses `services/security/secrets.py` (CG-1) |
+| 8 | `combine()` dedupes overlapping findings from rule + retrieval layers           | combine unit (CG-2)                   |
+| 9 | `POST /v1/alignment/check` returns a valid `AlignmentReport` schema             | API integration (CG-2)                |
+| 10 | `llm_judge` falls back gracefully when no provider is configured                | llm_judge unit (CG-5)                 |
+| 11 | Dashboard "Run alignment check" round-trips via the API                         | Playwright e2e (CG-3)                 |
+| 12 | `n0tune align check --file ...` matches the API result                          | CLI vitest (CG-4)                     |
+| 13 | `n0tune_alignment_check` MCP tool round-trips                                   | mcp-server smoke (CG-5)               |
+| 14 | CG-6 dogfooding pass: eight fixtures produce expected verdicts                  | release smoke (CG-6)                  |
+
+The CG-6 fixtures themselves live in
+[`docs/dogfooding-alignment.md`](dogfooding-alignment.md) and are the
+ultimate end-to-end test: false-positive ceiling on the project's own
+docs, recall floor on documented past framing drift, and synthetic
+positives on the rule engine.
+
 ## What Is Not Covered Yet
 
 - Real Postgres + pgvector: in-memory SQLite is used for tests. The schema works on both because `pgvector.sqlalchemy` falls back when the `vector` extension is unavailable, but query plans differ.
 - Real OpenAI / Anthropic providers: the mocked provider test in `test_hardening.py` exercises the wire format; live provider tests are intentionally absent to keep CI keyless.
+- Context Guard: design-only at v0.1.2. Tests land in CG-1+.
 - Production load / latency benchmarks: a methodology and headline numbers doc lives at [docs/token-savings-report.md](token-savings-report.md). A full eval harness lands alongside `evals/`.

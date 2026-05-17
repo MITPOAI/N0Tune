@@ -2,6 +2,49 @@
 
 All notable changes to N0Tune will be documented here.
 
+## Unreleased
+
+### Added — Context Guard (Phase CG-0, design only)
+
+- New design docs for **Context Guard**, the planned alignment + grounding
+  layer that checks whether an AI agent's response, plan, or diff stays
+  aligned with N0Tune's stored direction, current phase, security rules,
+  and benchmark facts:
+  - [docs/context-guard.md](docs/context-guard.md) — user-facing pitch,
+    the ten alignment questions, agent workflow, planned surfaces
+    (API / dashboard / CLI / MCP), CG-0 through CG-6 phase plan.
+  - [docs/alignment-checker.md](docs/alignment-checker.md) — technical
+    contract: engine layers (rule_engine, retrieval_check, llm_judge),
+    `AlignmentReport` schema, `alignment_rules` table design, planned
+    API surface, CLI design, MCP tool design.
+  - [docs/dogfooding-alignment.md](docs/dogfooding-alignment.md) — the
+    eight fixtures CG-6 will run against N0Tune's own history,
+    pass/fail criteria, expected false-positive failures + how to
+    resolve them.
+- README gets a "Context Guard (design phase)" section above "How It
+  Works" so users encounter the framing before the deep dives.
+- `docs/roadmap.md` gains a Phase CG block (CG-0 through CG-6) with
+  acceptance criteria per sub-phase.
+- `docs/architecture.md` gains a Context Guard component sketch
+  showing how the engine sits next to the Context Compiler.
+- `docs/testing.md` documents the planned 14-item Context Guard test
+  matrix, mapped to the CG sub-phases.
+
+CG-0 is **design only.** No engine code, no endpoint, no UI, no CLI, no
+MCP tool, no rules data, no new dependencies, no schema migration. The
+semantic cache, context compiler, provider router, and memory
+consolidation are untouched.
+
+### Dashboard
+
+- Sidebar nav replacing the nine-tab single-row strip. Tabs are grouped
+  into Start / Personalize / Run / Observe with a one-line hint under
+  each; the hint is `aria-hidden` so accessibility-name selectors (and
+  the Playwright e2e suite) keep working unchanged.
+- Header tagline corrected to the current headline ("Fine-tune any AI,
+  without fine-tuning") since v0.1.2 already shipped the framing change
+  in the docs but the dashboard chrome had not been updated.
+
 ## 0.1.2 - 2026-05-17
 
 A framing + dynamics release. Same product surface as 0.1.1; what
