@@ -63,59 +63,61 @@ Restart Claude Desktop. The hammer/tools icon should now show the seven
 
 ## Claude Code
 
-Project-scoped (recommended — keep it inside one repo so unrelated
-sessions don't see your memory):
+Claude Code 2.x reads MCP servers from **`.mcp.json` at the project
+root** (NOT `.claude/mcp.json` — that's the v1 location and is
+ignored). The fastest way to register is the official CLI:
 
 ```bash
-mkdir -p .claude
-cat > .claude/mcp.json <<'JSON'
-{
-  "mcpServers": {
-    "n0tune": {
-      "command": "node",
-      "args": ["./integrations/mcp-server/src/server.mjs"],
-      "env": {
-        "N0TUNE_API_BASE_URL": "http://localhost:8000",
-        "N0TUNE_API_KEY": "replace-with-local-development-key",
-        "N0TUNE_APP_ID": "demo",
-        "N0TUNE_USER_ID": "you"
-      }
-    }
-  }
-}
-JSON
+# from the repo root
+claude mcp add-json n0tune '{"command":"node","args":["./integrations/mcp-server/src/server.mjs"],"env":{"N0TUNE_API_BASE_URL":"http://localhost:8000","N0TUNE_API_KEY":"replace-with-local-development-key","N0TUNE_APP_ID":"demo","N0TUNE_USER_ID":"you"}}' --scope project
 ```
 
-Restart the Claude Code session. The `/mcp` command should list `n0tune`
-and its seven tools.
+That writes `.mcp.json` at the repo root in the exact format Claude
+Code expects. Restart Claude Code, then:
+
+```bash
+claude mcp list     # n0tune should appear and be ✓ Connected
+```
+
+In an interactive session, `/mcp` shows the same list plus the 8
+`n0tune_*` tools as callable.
+
+### If you see "Failed to connect"
+
+Two known causes:
+
+1. **The Gateway isn't running.** Boot it: `docker compose up -d --wait`
+   then `curl http://localhost:8000/health`.
+2. **The MCP server itself errored on startup.** Enable the debug log
+   and re-run:
+   ```bash
+   N0TUNE_MCP_DEBUG=1 claude mcp list
+   tail -n 50 "$TMPDIR/n0tune-mcp-server.log"   # or %TEMP%\n0tune-mcp-server.log on Windows
+   ```
 
 ### Sparse-worktree gotcha
 
-Claude Code reads `.claude/mcp.json` from its **current working
-directory** at session start. It does not walk up the tree to find a
-parent repo's config. So if you open Claude Code with CWD inside
-`.claude/worktrees/<branch>/`, the file at the repo root will not
-load and the `n0tune_*` tools will not appear.
+Claude Code reads `.mcp.json` from its **current working directory** at
+session start. It does not walk up the tree to find a parent repo's
+config. A second twist: Claude-Code-managed worktrees under
+`.claude/worktrees/` are a **sparse copy** of the project — they
+include `packages/` and `scripts/` but not `integrations/`. The
+relative path `./integrations/mcp-server/src/server.mjs` from the
+canonical config therefore doesn't resolve inside a worktree.
 
-A second twist: Claude-Code-managed worktrees under `.claude/worktrees/`
-are a **sparse copy** of the project — they include `packages/` and
-`scripts/` but not `integrations/`. The relative path
-`./integrations/mcp-server/src/server.mjs` from the canonical config
-therefore doesn't resolve inside a worktree.
-
-Fix: keep one canonical `.claude/mcp.json` at the repo root, then run
+Fix: keep one canonical `.mcp.json` at the repo root, then run
 
 ```bash
 n0tune mcp sync          # or:  npm install   (postinstall does the same)
 ```
 
-…which copies the file into every `.claude/worktrees/*/.claude/`
-directory that doesn't already have its own. The sync **automatically
-rewrites relative `args` paths to absolute paths** when the target
-worktree is a sparse copy that doesn't contain the referenced files,
-so the MCP server still spawns correctly. The sync is idempotent and
-never overwrites a worktree's existing config, so per-worktree tweaks
-(different `N0TUNE_USER_ID`, different base URL) are safe.
+…which copies `.mcp.json` into every `.claude/worktrees/<name>/`
+directory. The sync **rewrites relative `args` paths to absolute
+paths** when the target worktree is a sparse copy that doesn't contain
+the referenced files, and **removes legacy `.claude/mcp.json`** files
+left by earlier versions that Claude Code 2.x ignores. Idempotent; per-worktree
+overrides (different `N0TUNE_USER_ID`, different base URL) are
+preserved.
 
 ### One-screen restart procedure
 

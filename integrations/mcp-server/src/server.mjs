@@ -1,7 +1,28 @@
 #!/usr/bin/env node
 
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import readline from "node:readline";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
+// Optional debug log so we can diagnose Claude Code spawn failures. Writes
+// to a fixed temp file rather than stderr so the host can't conflate it
+// with protocol output. Enable with N0TUNE_MCP_DEBUG=1.
+const DEBUG_LOG_PATH = path.join(os.tmpdir(), "n0tune-mcp-server.log");
+function dlog(label, value = "") {
+  if (!process.env.N0TUNE_MCP_DEBUG) return;
+  try {
+    fs.appendFileSync(
+      DEBUG_LOG_PATH,
+      `[${new Date().toISOString()}] ${label} ${
+        typeof value === "string" ? value : JSON.stringify(value)
+      }\n`,
+    );
+  } catch {
+    // never block protocol traffic on a logging failure
+  }
+}
 
 export const toolDefinitions = [
   {
@@ -261,20 +282,68 @@ async function handle(message) {
   return {};
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+// True when this file is the process entry point (i.e. invoked as
+// `node server.mjs`), not when imported by tests.
+//
+// We can't just compare `import.meta.url === pathToFileURL(process.argv[1]).href`
+// because on Windows, identical paths can differ by:
+//   * URL-encoding of spaces (e.g. "IMME internal" → "IMME%20internal")
+//   * case (drive letters, mixed slashes)
+//   * realpath resolution through Claude Code's spawn wrapper
+// Any of those mismatches and the readline loop never starts, which is
+// the textbook "MCP server failed to connect" symptom.
+function isProcessEntry() {
+  if (!process.argv[1]) return false;
+  try {
+    const here = path.normalize(fileURLToPath(import.meta.url)).toLowerCase();
+    const argv = path.normalize(process.argv[1]).toLowerCase();
+    if (here === argv) return true;
+    // Realpath fallback covers symlinks + 8.3 short names on Windows.
+    return (
+      fs.realpathSync(fileURLToPath(import.meta.url)).toLowerCase() ===
+      fs.realpathSync(process.argv[1]).toLowerCase()
+    );
+  } catch {
+    return false;
+  }
+}
+
+if (isProcessEntry()) {
+  dlog("startup", {
+    argv: process.argv,
+    cwd: process.cwd(),
+    apiBaseUrl,
+    appId: defaultAppId,
+    hasKey: Boolean(apiKey),
+  });
   const rl = readline.createInterface({ input: process.stdin });
   rl.on("line", (line) => {
     void (async () => {
       if (!line.trim()) {
         return;
       }
-      const message = JSON.parse(line);
-      if (!message.id) {
+      let message;
+      try {
+        message = JSON.parse(line);
+      } catch (err) {
+        dlog("parse error", { line, err: String(err) });
+        return;
+      }
+      // JSON-RPC notifications (no id) — e.g. `notifications/initialized`,
+      // which Claude Code sends right after `initialize`. They must NOT
+      // get a reply; just acknowledge by returning early.
+      if (message.id === undefined || message.id === null) {
+        dlog("notification", { method: message.method });
         return;
       }
       try {
-        write({ jsonrpc: "2.0", id: message.id, result: await handle(message) });
+        const result = await handle(message);
+        write({ jsonrpc: "2.0", id: message.id, result });
       } catch (error) {
+        dlog("handler error", {
+          method: message.method,
+          err: error instanceof Error ? error.message : String(error),
+        });
         write({
           jsonrpc: "2.0",
           id: message.id,
@@ -286,4 +355,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
       }
     })();
   });
+  // Don't exit the process when stdin closes; Claude Code sends EOF on
+  // some lifecycle events and we want the readline loop to keep running.
+  process.stdin.on("end", () => dlog("stdin end", "(staying alive)"));
 }

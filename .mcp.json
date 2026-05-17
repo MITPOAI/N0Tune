@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "n0tune": {
+      "command": "node",
+      "args": [
+        "./integrations/mcp-server/src/server.mjs"
+      ],
+      "env": {
+        "N0TUNE_API_BASE_URL": "http://localhost:8000",
+        "N0TUNE_API_KEY": "replace-with-local-development-key",
+        "N0TUNE_APP_ID": "demo",
+        "N0TUNE_USER_ID": "n0tune_builder"
+      }
+    }
+  }
+}

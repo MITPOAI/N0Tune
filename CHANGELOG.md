@@ -2,6 +2,42 @@
 
 All notable changes to N0Tune will be documented here.
 
+## 0.1.4 - 2026-05-17
+
+A wire-fix release. v0.1.3 claimed MCP was wired; on a real Claude
+Code 2.0.76 machine it was actually `✗ Failed to connect`. v0.1.4
+diagnosed and fixed it. Full notes in
+[docs/releases/v0.1.4.md](docs/releases/v0.1.4.md).
+
+### Fixed
+
+- **MCP server now handles `notifications/initialized` correctly.**
+  Claude Code's MCP handshake sends a JSON-RPC notification right after
+  `initialize`. Our server's early-return on missing `id` was correct
+  in spirit but left Claude Code's client waiting for an ack that never
+  came, timing out the connection. Now explicit: notifications get
+  logged (under `N0TUNE_MCP_DEBUG=1`) and acknowledged silently.
+- **`scripts/sync-mcp-config.mjs` writes `.mcp.json` at the project
+  root** — that's where Claude Code 2.x reads. The previous version
+  wrote `.claude/mcp.json` (Claude Code 1.x) which is now ignored.
+  The new sync also tears down the stale `.claude/mcp.json` files left
+  by earlier syncs so there's only one source of truth.
+
+### Added
+
+- **Diagnostic log** at `$TMPDIR/n0tune-mcp-server.log` when
+  `N0TUNE_MCP_DEBUG=1` is set. Captures startup args, cwd, notifications,
+  handler errors — first port of call when an MCP launch fails.
+- **Robust entry-point check** via `path.normalize` + `fs.realpathSync`
+  with case-insensitive comparison. Survives Windows path encoding
+  (spaces → `%20`), case differences, and Claude Code's spawn wrapper.
+
+### Verified
+
+- `claude mcp list` reports `n0tune: ✓ Connected` (first green).
+- Manual JSON-RPC smoke: 8 tools, `initialize` → `notifications/initialized`
+  → `tools/list` → `tools/call` all round-trip.
+
 ## 0.1.3 - 2026-05-17
 
 A "make it smart and wire it" release. v0.1.2 made N0Tune downloadable;
