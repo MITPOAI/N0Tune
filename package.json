@@ -16,7 +16,9 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
-    "format:check": "prettier --check \"**/*.{md,json,ts,tsx,js,mjs,css,yml,yaml}\""
+    "format:check": "prettier --check \"**/*.{md,json,ts,tsx,js,mjs,css,yml,yaml}\"",
+    "mcp:sync": "node scripts/sync-mcp-config.mjs",
+    "postinstall": "node scripts/sync-mcp-config.mjs"
   },
   "devDependencies": {
     "prettier": "^3.3.3"

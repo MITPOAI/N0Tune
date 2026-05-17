@@ -16,8 +16,10 @@
  * N0TUNE_API_KEY (or --api-key) and is sent as the bearer token.
  */
 
+import { execFileSync } from "node:child_process";
 import { readFile, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import process from "node:process";
 
 const USAGE = `n0tune <command> [args]
@@ -42,6 +44,9 @@ Commands:
   files sync <folder>          Walk Markdown files and POST them to the Gateway.
 
   mcp install                  Print Claude Desktop / Cursor MCP config snippets.
+  mcp sync                     Copy <repo>/.claude/mcp.json into every git worktree
+                               under .claude/worktrees/* so Claude Code finds it
+                               regardless of which working tree you open.
 
   init                         (stub) Create a local config.
   desktop start                (stub) Boot the Desktop dev server.
@@ -409,8 +414,11 @@ async function runFiles(positional, { flags }) {
 
 function runMcp(positional) {
   const [verb] = positional;
+  if (verb === "sync") {
+    return runMcpSync();
+  }
   if (verb !== "install") {
-    console.error("mcp install");
+    console.error("mcp install | mcp sync");
     return 1;
   }
   const claudeDesktop = {
@@ -432,6 +440,28 @@ function runMcp(positional) {
   console.log("\n# Cursor — same shape under cursor.config.json's mcpServers key.");
   console.log("# See docs/mcp.md for full setup.");
   return 0;
+}
+
+function runMcpSync() {
+  // Resolve repo root via git first (handles worktrees and submodules);
+  // fall back to the CLI's own location (packages/cli/src/ → repo root).
+  let repoRoot;
+  try {
+    repoRoot = execFileSync("git", ["rev-parse", "--show-toplevel"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+  }
+  const script = resolve(repoRoot, "scripts", "sync-mcp-config.mjs");
+  try {
+    execFileSync("node", [script], { stdio: "inherit" });
+    return 0;
+  } catch (error) {
+    console.error(`mcp sync failed: ${error?.message ?? error}`);
+    return 1;
+  }
 }
 
 function runStub(name) {

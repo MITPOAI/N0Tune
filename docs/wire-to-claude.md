@@ -89,6 +89,25 @@ JSON
 Restart the Claude Code session. The `/mcp` command should list `n0tune`
 and its seven tools.
 
+### Worktree gotcha
+
+Claude Code reads `.claude/mcp.json` from its **current working
+directory** at session start. It does not walk up the tree to find a
+parent repo's config. So if you open Claude Code with CWD inside
+`.claude/worktrees/<branch>/`, the file at the repo root will not
+load and the `n0tune_*` tools will not appear.
+
+Fix: keep one canonical `.claude/mcp.json` at the repo root, then run
+
+```bash
+n0tune mcp sync          # or:  npm install   (postinstall does the same)
+```
+
+…which copies the file into every `.claude/worktrees/*/.claude/`
+directory that doesn't already have its own. The sync is idempotent
+and never overwrites a worktree's existing config, so per-worktree
+tweaks (different `N0TUNE_USER_ID`, different base URL) are safe.
+
 Or globally (`~/.claude/mcp.json` with the same `mcpServers` block — use
 an absolute path for `args`).
 

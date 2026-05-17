@@ -79,6 +79,16 @@ jobs:
       - name: Pre-build @n0tune/sdk
         run: npm --workspace packages/sdk-js run build
 
+      # Tauri's build step needs platform-specific icons next to the
+      # PNGs the repo ships: icon.ico (Windows), icon.icns (macOS), the
+      # Microsoft Store sizes, etc. `tauri icon` generates them all
+      # from the 1024-PNG master. Without this step the Windows build
+      # fails with: "icons/icon.ico not found; required for generating
+      # a Windows Resource file during tauri-build".
+      - name: Generate platform icons
+        working-directory: apps/desktop
+        run: npx --no-install tauri icon src-tauri/icons/icon.png
+
       - name: Build Tauri bundle
         working-directory: apps/desktop
         run: npx --no-install tauri build --target ${{ matrix.target }}

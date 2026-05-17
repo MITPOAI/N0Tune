@@ -267,6 +267,17 @@ To wire N0Tune into your AI tool (Claude / Cursor / Codex CLI),
 paste the prompt from [`docs/install.md#the-exact-prompt`](docs/install.md#the-exact-prompt)
 into your AI assistant and follow along.
 
+> **Worktree gotcha.** Claude Code reads `.claude/mcp.json` from its
+> current working directory at session start; it does not walk up to
+> find the parent repo's config. Running `npm install` at the repo
+> root triggers a `postinstall` hook that copies the canonical
+> `.claude/mcp.json` into every `.claude/worktrees/*/.claude/`
+> directory that doesn't already have one. You can also run it on
+> demand: `n0tune mcp sync`. The sync is idempotent and never
+> overwrites an existing per-worktree config. See
+> [`docs/wire-to-claude.md`](docs/wire-to-claude.md#worktree-gotcha)
+> for the full explanation.
+
 ## Gateway Quickstart
 
 Power-user path: run the server, dashboard, Postgres, and Redis to get
