@@ -6,6 +6,16 @@ const uniqueUser = `e2e-${Date.now().toString(36)}-${Math.random().toString(36).
 test.describe.serial("dashboard end-to-end flows", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
+    // Wait until the dashboard has actually hydrated. The Wait-for-dashboard
+    // CI step only checks that the Next.js server returns HTTP 200; in CI
+    // we've seen the test race past React hydration on cold start, which
+    // makes early click events get dropped by the bare DOM (no React handler
+    // attached yet). The Refresh button is the first interactive element on
+    // the page, so its presence is a reliable hydration signal.
+    await page.getByRole("button", { name: /^refresh$/i }).waitFor({
+      state: "visible",
+      timeout: 30_000,
+    });
     // Switch the global user_id field on the header so each test run is isolated.
     const userIdInput = page.locator('label:has-text("user_id") input');
     await userIdInput.fill(uniqueUser);
@@ -19,7 +29,21 @@ test.describe.serial("dashboard end-to-end flows", () => {
       .locator('form textarea[name="text"]')
       .fill("E2E user prefers short architecture answers.");
     await page.locator('form input[name="confidence"]').fill("0.95");
+
+    // Wait for the actual POST so we're not racing the refresh fetch that
+    // follows it. Either the POST succeeds and we can assert on the rendered
+    // text, or the response surfaces a clear error.
+    const postPromise = page.waitForResponse(
+      (resp) =>
+        resp.url().includes("/v1/memories") &&
+        resp.request().method() === "POST",
+    );
     await page.getByRole("button", { name: /^save$/i }).click();
+    const postResponse = await postPromise;
+    expect(
+      postResponse.ok(),
+      `POST /v1/memories failed: ${postResponse.status()}`,
+    ).toBeTruthy();
 
     await expect(
       page.getByText("E2E user prefers short architecture answers."),
