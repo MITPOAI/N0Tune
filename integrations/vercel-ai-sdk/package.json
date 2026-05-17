@@ -1,6 +1,6 @@
 {
   "name": "@n0tune/vercel-ai-sdk",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": false,
   "description": "Vercel AI SDK integration for N0Tune — OpenAI-compatible provider factory plus context preview helper.",
   "type": "module",

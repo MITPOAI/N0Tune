@@ -58,18 +58,36 @@ async def rate_limit(
     if current.rate_limit_rpm <= 0 or not request.url.path.startswith("/v1/"):
         return await call_next(request)
     backend = request.app.state.rate_limit_backend
-    allowed, retry_after = backend.hit(
+    decision = backend.hit(
         derive_rate_limit_key(request),
         window_seconds=current.rate_limit_window_seconds,
         limit=current.rate_limit_rpm,
     )
-    if not allowed:
+    # Always set the informational headers on /v1/ traffic so well-behaved
+    # clients can back off proactively rather than only after a 429.
+    rate_limit_headers = {
+        "X-RateLimit-Limit": str(current.rate_limit_rpm),
+        "X-RateLimit-Remaining": str(decision.remaining),
+        "X-RateLimit-Reset": str(decision.reset_at),
+    }
+    if not decision.allowed:
         return JSONResponse(
             status_code=429,
-            content={"error": "rate_limited", "retry_after": retry_after},
-            headers={"Retry-After": str(retry_after)},
+            content={
+                "error": "rate_limited",
+                "retry_after": decision.retry_after,
+                "limit": current.rate_limit_rpm,
+                "window_seconds": current.rate_limit_window_seconds,
+            },
+            headers={
+                **rate_limit_headers,
+                "Retry-After": str(decision.retry_after),
+            },
         )
-    return await call_next(request)
+    response = await call_next(request)
+    for header, value in rate_limit_headers.items():
+        response.headers.setdefault(header, value)
+    return response
 
 
 app.include_router(health_router)

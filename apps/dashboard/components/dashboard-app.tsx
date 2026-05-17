@@ -82,6 +82,7 @@ type AuditLog = {
 
 type Tab =
   | "Overview"
+  | "Live trace"
   | "Context Lab"
   | "Memories"
   | "Style"
@@ -100,6 +101,7 @@ const navGroups: { label: string; items: { tab: Tab; hint: string }[] }[] = [
     label: "Start",
     items: [
       { tab: "Overview", hint: "API health + counts" },
+      { tab: "Live trace", hint: "See the last request" },
       { tab: "Context Lab", hint: "Compare two users live" },
     ],
   },
@@ -600,6 +602,15 @@ export function DashboardApp() {
         {tab === "Documents" && (
           <Documents documents={documents} onCreate={createDocument} />
         )}
+        {tab === "Live trace" && (
+          <LiveTracePanel
+            message={message}
+            setMessage={setMessage}
+            preview={preview}
+            onPreview={previewContext}
+            cache={cache}
+          />
+        )}
         {tab === "Context" && (
           <ContextPanel
             message={message}
@@ -951,6 +962,268 @@ function ContextPanel({
         preview={preview}
       />
     </div>
+  );
+}
+
+/**
+ * Live trace — the "how the system thinks" view.
+ *
+ * Type a query, hit "Trace it", and see the full compile pipeline:
+ *   - candidate memories ranked by retrieval score (bar chart)
+ *   - which ones were dropped as near-duplicates (MMR exclusions)
+ *   - which ones survived the token budget
+ *   - token math (compiled vs naive baseline + savings %)
+ *   - whether the semantic cache would have hit (count of dependencies)
+ *
+ * This is the dashboard's answer to "how does N0Tune actually work?"
+ * It re-uses the existing /v1/context/preview endpoint — no new API.
+ */
+function LiveTracePanel({
+  message,
+  setMessage,
+  preview,
+  onPreview,
+  cache,
+}: {
+  message: string;
+  setMessage: (value: string) => void;
+  preview: ContextPreview | null;
+  onPreview: (event?: FormEvent<HTMLFormElement>) => void;
+  cache: CacheList | null;
+}) {
+  const compiled = preview?.prompt_tokens_estimated ?? 0;
+  const saved = preview?.tokens_saved_estimated ?? 0;
+  const naive = compiled + saved;
+  const savedPct = naive > 0 ? Math.round((saved / naive) * 100) : 0;
+  const selectedIds = new Set(preview?.selected_memories.map((m) => m.id));
+  const cacheEntries = cache?.total ?? 0;
+
+  return (
+    <div className="grid gap-4">
+      <Panel>
+        <div className="flex items-baseline justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">Live trace</h2>
+            <p className="text-sm text-ink-mute">
+              Watch one request flow through retrieval → MMR diversity →
+              token budget → compile. The system never hides — every
+              memory shown here is one the model would have seen.
+            </p>
+          </div>
+          <span className="rounded-md border border-accent/30 bg-accent-soft px-3 py-1 text-xs font-semibold text-accent">
+            same model · personal answer
+          </span>
+        </div>
+        <form className="mt-5 grid gap-3 md:grid-cols-[1fr_auto]" onSubmit={onPreview}>
+          <textarea
+            className="input min-h-24"
+            value={message}
+            onChange={(event) => setMessage(event.target.value)}
+            placeholder="Type a question. Try: 'How should I explain RAG to a product team?'"
+          />
+          <button className="button h-fit self-start">Trace it</button>
+        </form>
+      </Panel>
+
+      {preview ? (
+        <>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Stat label="Compiled prompt" value={`${compiled}`} unit="tokens" />
+            <Stat
+              label="Naive baseline"
+              value={`${naive}`}
+              unit="tokens"
+            />
+            <Stat
+              label="Saved"
+              value={`${saved}`}
+              unit={`tokens · ${savedPct}%`}
+              accent
+            />
+          </div>
+
+          <Panel>
+            <div className="flex items-baseline justify-between">
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-ink-mute">
+                Memory retrieval (top {preview.context_trace.why_selected.length + preview.context_trace.excluded.filter((e) => e.type === "memory").length})
+              </h3>
+              <span className="text-xs text-ink-mute">
+                {preview.selected_memories.length} kept · {
+                  preview.context_trace.excluded.filter((e) => e.type === "memory").length
+                } dropped
+              </span>
+            </div>
+            <ul className="mt-3 space-y-2">
+              {preview.selected_memories.map((m) => (
+                <MemoryBar key={m.id} memory={m} kept />
+              ))}
+              {preview.context_trace.excluded
+                .filter((e) => e.type === "memory")
+                .map((e) => {
+                  const stub: Memory = {
+                    id: e.id,
+                    type: "fact",
+                    text: e.reason,
+                    confidence: 0,
+                    source_message_id: null,
+                    expires_at: null,
+                    deleted_at: null,
+                    similarity: 0,
+                  };
+                  if (selectedIds.has(e.id)) return null;
+                  return (
+                    <MemoryBar
+                      key={`x-${e.id}`}
+                      memory={stub}
+                      kept={false}
+                      excludedReason={e.reason}
+                    />
+                  );
+                })}
+            </ul>
+          </Panel>
+
+          <Panel>
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-ink-mute">
+              Pipeline state
+            </h3>
+            <ol className="mt-4 grid gap-2 sm:grid-cols-5">
+              <PipelineStep label="Embed" done note="message → vector" />
+              <PipelineStep label="Retrieve" done note={`${preview.selected_memories.length + preview.selected_chunks.length} candidates`} />
+              <PipelineStep label="MMR" done note={`${preview.context_trace.excluded.filter((e) => e.type === "memory").length} dropped`} />
+              <PipelineStep label="Compile" done note={`${compiled} tokens`} />
+              <PipelineStep
+                label="Cache"
+                done={preview.cache_hit}
+                note={
+                  preview.cache_hit
+                    ? "hit"
+                    : `${cacheEntries} entries · would miss`
+                }
+              />
+            </ol>
+            {preview.warnings.length ? (
+              <ul className="mt-4 space-y-1 rounded-md border border-warn-line bg-warn-soft p-3 text-sm text-warn">
+                {preview.warnings.map((w) => (
+                  <li key={w}>⚠ {w}</li>
+                ))}
+              </ul>
+            ) : null}
+          </Panel>
+        </>
+      ) : (
+        <Panel>
+          <p className="text-sm text-ink-mute">
+            Type a question above and hit{" "}
+            <strong className="text-ink">Trace it</strong>. The next
+            request will draw every step — retrieval ranks, diversity
+            drops, token math, cache check.
+          </p>
+        </Panel>
+      )}
+    </div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  unit,
+  accent,
+}: {
+  label: string;
+  value: string;
+  unit?: string;
+  accent?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-lg border p-4 ${
+        accent
+          ? "border-accent/40 bg-accent-soft"
+          : "border-line bg-surface shadow-card"
+      }`}
+    >
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-mute">
+        {label}
+      </p>
+      <p
+        className={`mt-1 font-semibold ${
+          accent ? "text-accent" : "text-ink"
+        }`}
+        style={{ fontVariantNumeric: "tabular-nums", fontSize: 26 }}
+      >
+        {value}
+      </p>
+      {unit ? <p className="text-xs text-ink-mute">{unit}</p> : null}
+    </div>
+  );
+}
+
+function MemoryBar({
+  memory,
+  kept,
+  excludedReason,
+}: {
+  memory: Memory;
+  kept: boolean;
+  excludedReason?: string;
+}) {
+  const score = Math.max(0, Math.min(1, memory.similarity ?? 0));
+  const pct = Math.round(score * 100);
+  return (
+    <li
+      className={`rounded-md border p-3 ${
+        kept ? "border-line bg-surface" : "border-warn-line/50 bg-warn-soft/40"
+      }`}
+    >
+      <div className="flex items-baseline justify-between gap-3 text-sm">
+        <span className="font-medium">
+          {kept ? "✓ " : "✗ "}
+          {memory.type}
+        </span>
+        <span
+          className="text-xs text-ink-mute"
+          style={{ fontVariantNumeric: "tabular-nums" }}
+        >
+          {kept ? `sim ${pct}%` : excludedReason ?? "excluded"}
+        </span>
+      </div>
+      {kept ? (
+        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-field">
+          <div
+            className="h-full bg-accent"
+            style={{ width: `${Math.max(6, pct)}%` }}
+          />
+        </div>
+      ) : null}
+      <p className="mt-2 text-sm leading-6 text-ink/72">{memory.text}</p>
+    </li>
+  );
+}
+
+function PipelineStep({
+  label,
+  done,
+  note,
+}: {
+  label: string;
+  done: boolean;
+  note: string;
+}) {
+  return (
+    <li
+      className={`rounded-md border p-3 text-sm ${
+        done
+          ? "border-accent/40 bg-accent-soft text-accent"
+          : "border-line bg-field text-ink-mute"
+      }`}
+    >
+      <p className="text-[11px] font-semibold uppercase tracking-wide">
+        {label}
+      </p>
+      <p className="mt-1 text-xs">{note}</p>
+    </li>
   );
 }
 

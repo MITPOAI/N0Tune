@@ -27,16 +27,19 @@
   :root {
     --bg: #14110d;
     --surface: #1d1916;
-    --line: #2e2a25;
+    /* Was #2e2a25 — only 1.6:1 against --surface, failed WCAG AA.
+       Bumping to a clearly visible separator while staying calm. */
+    --line: #3d3930;
     --ink: #f4eee4;
-    --ink-mute: #a39c8f;
+    --ink-mute: #b6ad9d;
     --accent: #94b3ef;
     --accent-soft: #1f2a44;
     --warn: #e89b6f;
     --warn-soft: #2e1d12;
     --warn-line: #5a3a25;
     --field: #221d18;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.04);
+    /* Stronger ring keeps card edges visible on the near-black background. */
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.06);
   }
 }
 
@@ -299,7 +302,10 @@ button.primary:disabled {
 
 .chip--active {
   background: var(--ink);
-  color: #fff;
+  /* Use --bg (not literal #fff) so the chip text inverts cleanly in dark
+     mode. Light: dark chip with cream text. Dark: cream chip with dark
+     text. */
+  color: var(--bg);
   border-color: var(--ink);
 }
 
@@ -682,4 +688,582 @@ button.primary:disabled {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+/* ---------------------------------------------------------------- */
+/*  Mansion layout — sidebar + room shell + Home dashboard          */
+/* ---------------------------------------------------------------- */
+
+.app--mansion {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.app--mansion .app-header {
+  padding: 12px 24px;
+}
+
+.app--mansion .brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.app--mansion .brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.app--mansion .brand-name {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  font-size: 15px;
+}
+
+.app--mansion .brand-tagline {
+  font-size: 12px;
+  color: var(--ink-mute);
+}
+
+.mansion {
+  display: grid;
+  grid-template-columns: 232px 1fr;
+  flex: 1;
+  min-height: 0;
+}
+
+.mansion-content {
+  padding: 24px 28px 64px;
+  overflow-y: auto;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* Sidebar -------------------------------------------------------- */
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  padding: 20px 14px;
+  border-right: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface) 96%, var(--accent));
+  min-height: calc(100vh - 60px);
+}
+
+.sidebar-rooms {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar-divider {
+  height: 1px;
+  background: var(--line);
+  margin: 12px 4px;
+}
+
+.sidebar-rooms--fallback {
+  opacity: 0.78;
+}
+
+.sidebar-room {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 10px;
+  text-align: left;
+  cursor: pointer;
+  color: var(--ink-mute);
+  transition: background var(--motion), color var(--motion),
+    border-color var(--motion);
+}
+
+.sidebar-room:hover {
+  background: var(--field);
+  color: var(--ink);
+}
+
+.sidebar-room--active {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
+.sidebar-room-icon {
+  font-size: 18px;
+  line-height: 1;
+  display: inline-flex;
+  justify-content: center;
+}
+
+.sidebar-room-body {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.sidebar-room-label {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.sidebar-room-hint {
+  font-size: 11px;
+  color: var(--ink-mute);
+}
+
+/* Room shell ----------------------------------------------------- */
+
+.room {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.room-header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 8px 12px;
+}
+
+.room-title {
+  grid-column: 1;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+}
+
+.room-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.room-subtitle {
+  grid-column: 1;
+  margin: 0;
+  color: var(--ink-mute);
+  font-size: 13px;
+}
+
+.room-actions {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  display: flex;
+  gap: 8px;
+}
+
+.room-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Home — system health pills, pipeline, activity, doors --------- */
+
+.home-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+.status-pills {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.status-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.status-pill-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ink-mute);
+  flex-shrink: 0;
+}
+
+.status-pill--ok .status-pill-dot {
+  background: #2f9e74;
+  box-shadow: 0 0 0 4px color-mix(in srgb, #2f9e74 16%, transparent);
+}
+
+.status-pill--warn .status-pill-dot {
+  background: var(--warn);
+  box-shadow: 0 0 0 4px var(--warn-soft);
+}
+
+.status-pill-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-mute);
+}
+
+.status-pill-value {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+/* Savings hero — the "is N0Tune worth my time?" answer ---------- */
+
+.savings-hero {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 18px 20px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.savings-hero--empty {
+  display: block;
+}
+
+.savings-hero-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.savings-hero-block--accent {
+  background: var(--accent-soft);
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+
+.savings-hero-value {
+  font-size: 26px;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.savings-hero-block--accent .savings-hero-value {
+  color: var(--accent);
+}
+
+.savings-hero-empty {
+  margin: 6px 0 0;
+  color: var(--ink-mute);
+  font-size: 13px;
+}
+
+@media (max-width: 700px) {
+  .savings-hero {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Pipeline diagram ---------------------------------------------- */
+
+.pipeline {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 18px 20px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pipeline header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.pipeline-stages {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 4px;
+  position: relative;
+}
+
+.pipeline-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 6px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--field);
+  position: relative;
+  transition: border-color var(--motion), background var(--motion),
+    box-shadow var(--motion);
+}
+
+.pipeline-node:not(:last-child)::after {
+  /* Connector line to the next node. */
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: -4px;
+  width: 8px;
+  height: 1px;
+  background: var(--line);
+}
+
+.pipeline-node--source,
+.pipeline-node--sink {
+  background: var(--surface);
+}
+
+.pipeline-node--active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.pipeline-node-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ink-mute);
+  margin-bottom: 4px;
+}
+
+.pipeline-node--active .pipeline-node-dot {
+  background: var(--accent);
+  animation: n0-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes n0-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0.65;
+  }
+}
+
+.pipeline-node-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.pipeline-node-hint {
+  font-size: 10.5px;
+  color: var(--ink-mute);
+  text-align: center;
+}
+
+.pipeline-caption {
+  margin: 0;
+}
+
+/* Activity feed -------------------------------------------------- */
+
+.activity {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 16px 18px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.activity-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.activity-header h2 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.activity-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.activity-row {
+  border-radius: 8px;
+}
+
+.activity-button {
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 8px;
+  text-align: left;
+  cursor: pointer;
+  color: var(--ink);
+  transition: background var(--motion);
+}
+
+.activity-button:hover {
+  background: var(--field);
+}
+
+.activity-icon {
+  font-size: 13px;
+  color: var(--accent);
+}
+
+.activity-text {
+  font-size: 13px;
+}
+
+.activity-time {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Home doors ----------------------------------------------------- */
+
+.home-doors {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.home-door {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  cursor: pointer;
+  text-align: left;
+  transition: transform var(--motion), border-color var(--motion),
+    box-shadow var(--motion);
+}
+
+.home-door:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--ink) 14%, var(--line));
+  box-shadow: 0 4px 16px rgba(24, 19, 12, 0.06);
+}
+
+.home-door-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.home-door-label {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.home-door-hint {
+  font-size: 12px;
+  color: var(--ink-mute);
+}
+
+/* Guard room ----------------------------------------------------- */
+
+.guard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 900px) {
+  .guard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.chip--warn {
+  background: var(--warn-soft);
+  color: var(--warn);
+  border-color: var(--warn-line);
+}
+
+.chip--neutral {
+  background: var(--field);
+}
+
+.notice--warn {
+  background: var(--warn-soft);
+  border-color: var(--warn-line);
+  color: var(--warn);
+}
+
+/* Responsive — collapse the sidebar at narrow widths ------------ */
+
+@media (max-width: 860px) {
+  .mansion {
+    grid-template-columns: 1fr;
+  }
+  .sidebar {
+    position: static;
+    min-height: 0;
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+  }
+  .sidebar-rooms {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 4px;
+  }
+  .sidebar-room-hint {
+    display: none;
+  }
+  .pipeline-stages {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .pipeline-node:nth-child(3n)::after {
+    display: none;
+  }
 }

@@ -1,6 +1,6 @@
 [package]
 name = "n0tune-desktop"
-version = "0.1.4"
+version = "0.1.5"
 description = "N0Tune Desktop — fine-tune any AI without fine-tuning."
 authors = ["N0Tune contributors"]
 edition = "2021"

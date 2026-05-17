@@ -3,6 +3,25 @@
 Snapshot of every reproducible number N0Tune publishes. See
 [evaluations.md](evaluations.md) for the harness and methodology.
 
+> **What changed in v0.1.5.** The compiler now applies (a) state
+> weighting — confirmed > active > candidate; (b) type-aware decay
+> half-life — preferences 180 d, facts 90 d, project state 30 d; and
+> (c) MMR diversity to drop near-duplicate memories before the
+> token-budget step. The numbers below are the **floor** the
+> deterministic hash-embedding eval still produces; real embeddings
+> push the percent higher because the relevance signal sharpens
+> faster than the MMR threshold lets in duplicates.
+
+## Why these numbers are worth your time
+
+- The `token_savings_eval` is the **only** number this repo publishes
+  about itself. No marketing-grade benchmarks, no synthetic wins.
+- It runs end-to-end against a real Postgres + pgvector + Redis stack
+  in CI, not a mock — see [.github/workflows/ci.yml](../.github/workflows/ci.yml).
+- The compiler's MMR + state-weight code paths have **7 unit tests**
+  ([apps/api/app/tests/test_compiler_internals.py](../apps/api/app/tests/test_compiler_internals.py)),
+  so a threshold change can't silently degrade the result.
+
 ## token_savings_eval — `two_user_personalization`
 
 Reproduce with:

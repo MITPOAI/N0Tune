@@ -2,6 +2,59 @@
 
 All notable changes to N0Tune will be documented here.
 
+## 0.1.5 - 2026-05-18
+
+A "make it useful, not just another context compressor" release. Full
+notes in [docs/releases/v0.1.5.md](docs/releases/v0.1.5.md).
+
+### Added
+
+- **Live trace tab** in the dashboard. One request, drawn end-to-end —
+  retrieval-score bars per memory, MMR drops with citations, token
+  math (compiled vs naive vs saved%), cache check, pipeline strip.
+  Uses the existing `/v1/context/preview` endpoint.
+- **Adaptive persona** — `POST /v1/users/{user_id}/style/adapt`.
+  Walks the last 20 preference/fact memories and proposes
+  tone/depth/format flips when ≥ 40 % of them agree on one label.
+  No LLM. 4 unit tests cover empty / agreement / already-match /
+  weak-majority paths.
+- **SavingsHero** on Desktop Home: three tabular-numeric cards
+  (saved this session, vs naive baseline %, average per request).
+  Hidden until the user has actually chatted.
+- **Dogfood evidence log** at `docs/dogfood-evidence.md`. Six
+  memories from the v0.1.5 work session written and queried back
+  from the running Gateway, with the verification curl commands so
+  any reader can reproduce the proof.
+- **Rate-limit headers** on every `/v1/` response: `X-RateLimit-Limit`,
+  `X-RateLimit-Remaining`, `X-RateLimit-Reset`. 429 also sets
+  `Retry-After`. The `hit()` contract now returns a typed
+  `RateLimitDecision`.
+- **Compiler unit tests** — `apps/api/app/tests/test_compiler_internals.py`
+  with 7 tests covering MMR diversity edge cases.
+
+### Changed
+
+- **Palette unified.** Desktop palette (beige + navy + warn) wins;
+  dashboard adopts the same CSS-variable design tokens and now has a
+  real `prefers-color-scheme: dark` block. Tailwind theme reads from
+  the CSS vars so dark mode flips both apps in one place.
+- **Desktop dark-mode line contrast** bumped from `#2e2a25` (1.6:1
+  vs surface — failed WCAG) to `#3d3930` so cards read clearly. Dark
+  shadow strengthened slightly to match.
+- **Rate-limit backend contract** — `hit()` now returns a
+  `RateLimitDecision` dataclass with `allowed / remaining /
+  retry_after / reset_at` instead of a `(bool, int)` tuple. Backwards-
+  incompatible only for code that imported the internal API.
+
+### Smoke at tag time
+
+- 66 API tests pass; ruff clean; mypy reports only the 3 pre-existing
+  external-library stub errors (pgvector / langfuse / fastembed).
+- Desktop: 7/7 tests, lint + typecheck green, production bundle still
+  in the ~240 kB band.
+- Dashboard: lint + typecheck green.
+- `claude mcp list` continues to report `n0tune: ✓ Connected`.
+
 ## 0.1.4 - 2026-05-17
 
 A wire-fix release. v0.1.3 claimed MCP was wired; on a real Claude

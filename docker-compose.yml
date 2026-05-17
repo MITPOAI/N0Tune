@@ -39,7 +39,7 @@ services:
       N0TUNE_ENVIRONMENT: ${N0TUNE_ENVIRONMENT:-development}
       N0TUNE_DATABASE_URL: ${N0TUNE_DATABASE_URL:-postgresql+psycopg://n0tune:n0tune_dev_password_change_me@postgres:5432/n0tune}
       N0TUNE_REDIS_URL: ${N0TUNE_REDIS_URL:-redis://redis:6379/0}
-      N0TUNE_CORS_ORIGINS: ${N0TUNE_CORS_ORIGINS:-["http://localhost:3000"]}
+      N0TUNE_CORS_ORIGINS: ${N0TUNE_CORS_ORIGINS:-["http://localhost:3000","http://localhost:1420","http://127.0.0.1:1420","tauri://localhost","https://tauri.localhost"]}
     ports:
       - "8000:8000"
     depends_on:
