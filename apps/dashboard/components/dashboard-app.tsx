@@ -80,18 +80,52 @@ type AuditLog = {
   metadata_json: Record<string, unknown>;
 };
 
-const tabs = [
-  "Overview",
-  "Context Lab",
-  "Memories",
-  "Style",
-  "Documents",
-  "Context",
-  "Cache",
-  "Audit",
-  "Security",
-] as const;
-type Tab = (typeof tabs)[number];
+type Tab =
+  | "Overview"
+  | "Context Lab"
+  | "Memories"
+  | "Style"
+  | "Documents"
+  | "Context"
+  | "Cache"
+  | "Audit"
+  | "Security";
+
+// Group the nine tabs into navigation sections so the sidebar reads as a
+// product surface, not a flat strip. The grouping reflects the day-to-day
+// flow: configure persona + memory, ingest documents, run context, then
+// inspect cache / audit / security.
+const navGroups: { label: string; items: { tab: Tab; hint: string }[] }[] = [
+  {
+    label: "Start",
+    items: [
+      { tab: "Overview", hint: "API health + counts" },
+      { tab: "Context Lab", hint: "Compare two users live" },
+    ],
+  },
+  {
+    label: "Personalize",
+    items: [
+      { tab: "Memories", hint: "Preferences, facts, projects" },
+      { tab: "Style", hint: "Persona / tone / format" },
+      { tab: "Documents", hint: "Files indexed for RAG" },
+    ],
+  },
+  {
+    label: "Run",
+    items: [
+      { tab: "Context", hint: "Compile + preview a request" },
+      { tab: "Cache", hint: "Semantic cache entries" },
+    ],
+  },
+  {
+    label: "Observe",
+    items: [
+      { tab: "Audit", hint: "Sensitive-op log" },
+      { tab: "Security", hint: "Keys + permissions" },
+    ],
+  },
+];
 
 const labDocumentTitle = "Context Lab RAG note";
 const labDocumentContent =
@@ -443,7 +477,7 @@ export function DashboardApp() {
   return (
     <main className="min-h-screen bg-field text-ink">
       <header className="sticky top-0 z-10 border-b border-line bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:gap-4 sm:px-5">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:gap-4 sm:px-6">
           <div className="flex items-center gap-3" aria-label="N0Tune">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -452,9 +486,12 @@ export function DashboardApp() {
               className="h-8 w-auto block select-none"
               draggable={false}
             />
-            <span className="hidden text-xs uppercase tracking-wide text-ink/55 sm:inline">
-              Armor for your AI tools
-            </span>
+            <div className="hidden sm:block">
+              <div className="text-[15px] font-semibold leading-tight">N0Tune</div>
+              <div className="text-xs text-ink/55 leading-tight">
+                Fine-tune any AI, without fine-tuning
+              </div>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <Field label="app_id" value={appId} onChange={setAppId} />
@@ -470,34 +507,64 @@ export function DashboardApp() {
         </div>
       </header>
 
-      <section className="mx-auto max-w-7xl px-4 py-5 sm:px-5 sm:py-6">
-        <div
-          className="mb-5 flex gap-2 overflow-x-auto pb-1 -mx-1 px-1"
-          aria-label="Dashboard sections"
-        >
-          {tabs.map((item) => (
-            <button
-              type="button"
-              aria-current={tab === item ? "page" : undefined}
-              className={`shrink-0 rounded-md border px-3 py-2 text-sm font-medium ${
-                tab === item
-                  ? "border-ink bg-white text-ink"
-                  : "border-line bg-transparent text-ink/64 hover:text-ink"
-              }`}
-              key={item}
-              onClick={() => setTab(item)}
-            >
-              {item}
-            </button>
-          ))}
-        </div>
-
-        {notice ? (
-          <div className="mb-4 rounded-md border border-rust/30 bg-rust/10 p-3 text-sm">
+      {notice ? (
+        <div className="mx-auto mt-4 max-w-7xl px-4 sm:px-6">
+          <div className="rounded-md border border-rust/30 bg-rust/10 p-3 text-sm">
             {notice}
           </div>
-        ) : null}
+        </div>
+      ) : null}
 
+      <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 md:flex-row">
+        <nav
+          className="md:w-56 md:shrink-0 md:sticky md:top-[68px] md:self-start"
+          aria-label="Dashboard sections"
+        >
+          <div className="flex gap-1 overflow-x-auto pb-2 md:flex-col md:gap-0 md:overflow-visible md:pb-0">
+            {navGroups.map((group) => (
+              <div
+                key={group.label}
+                className="md:mb-4 shrink-0 md:shrink md:w-full"
+              >
+                <div className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-wider text-ink/45 hidden md:block">
+                  {group.label}
+                </div>
+                <div className="flex gap-1 md:flex-col">
+                  {group.items.map(({ tab: item, hint }) => {
+                    const active = tab === item;
+                    return (
+                      <button
+                        key={item}
+                        type="button"
+                        aria-label={item}
+                        aria-current={active ? "page" : undefined}
+                        title={hint}
+                        onClick={() => setTab(item)}
+                        className={`shrink-0 rounded-md border px-3 py-2 text-left text-sm font-medium transition-colors ${
+                          active
+                            ? "border-ink bg-white text-ink shadow-card"
+                            : "border-transparent bg-transparent text-ink/64 hover:bg-white hover:text-ink"
+                        }`}
+                      >
+                        <span className="block">{item}</span>
+                        <span
+                          aria-hidden="true"
+                          className={`mt-0.5 hidden md:block text-[11px] font-normal leading-tight ${
+                            active ? "text-ink/55" : "text-ink/40"
+                          }`}
+                        >
+                          {hint}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </nav>
+
+        <section className="min-w-0 flex-1">
         {tab === "Overview" && (
           <Overview
             status={status}
@@ -552,7 +619,8 @@ export function DashboardApp() {
           />
         )}
         {tab === "Security" && <SecurityPanel />}
-      </section>
+        </section>
+      </div>
     </main>
   );
 }
