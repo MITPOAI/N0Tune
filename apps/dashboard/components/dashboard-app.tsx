@@ -87,21 +87,20 @@ type Tab =
   | "Memories"
   | "Style"
   | "Documents"
-  | "Context"
   | "Cache"
   | "Audit"
   | "Security";
 
-// Group the nine tabs into navigation sections so the sidebar reads as a
-// product surface, not a flat strip. The grouping reflects the day-to-day
-// flow: configure persona + memory, ingest documents, run context, then
-// inspect cache / audit / security.
+// Sidebar navigation. v0.1.5: removed the standalone "Context" tab
+// because Live trace already renders compile + memories + chunks +
+// pipeline state in one view. Two surfaces with the same purpose was
+// just confusing IA — now Live trace is the canonical compile surface
+// and Cache lives alongside it under Run.
 const navGroups: { label: string; items: { tab: Tab; hint: string }[] }[] = [
   {
     label: "Start",
     items: [
       { tab: "Overview", hint: "API health + counts" },
-      { tab: "Live trace", hint: "See the last request" },
       { tab: "Context Lab", hint: "Compare two users live" },
     ],
   },
@@ -116,7 +115,7 @@ const navGroups: { label: string; items: { tab: Tab; hint: string }[] }[] = [
   {
     label: "Run",
     items: [
-      { tab: "Context", hint: "Compile + preview a request" },
+      { tab: "Live trace", hint: "Compile a request, watch the pipeline" },
       { tab: "Cache", hint: "Semantic cache entries" },
     ],
   },
@@ -129,6 +128,32 @@ const navGroups: { label: string; items: { tab: Tab; hint: string }[] }[] = [
   },
 ];
 
+type ThemeMode = "system" | "light" | "dark";
+type ViewMode = "simple" | "advanced";
+type SimpleTile = "try" | "memories" | "compare" | null;
+
+function applyTheme(mode: ThemeMode) {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+  if (mode === "system") {
+    root.removeAttribute("data-theme");
+  } else {
+    root.setAttribute("data-theme", mode);
+  }
+}
+
+function readStoredTheme(): ThemeMode {
+  if (typeof window === "undefined") return "system";
+  const stored = window.localStorage.getItem("n0tune.theme");
+  return stored === "light" || stored === "dark" ? stored : "system";
+}
+
+function readStoredViewMode(): ViewMode {
+  if (typeof window === "undefined") return "simple";
+  const stored = window.localStorage.getItem("n0tune.viewMode");
+  return stored === "advanced" ? "advanced" : "simple";
+}
+
 const labDocumentTitle = "Context Lab RAG note";
 const labDocumentContent =
   "RAG retrieves external documents. N0Tune combines RAG with personal memory, response style, local files, semantic cache, and a compact context compiler. The same model can receive different context for different users without fine-tuning.";
@@ -138,6 +163,38 @@ export function DashboardApp() {
   const [appId, setAppId] = useState("demo");
   const [userId, setUserId] = useState("user_123");
   const [status, setStatus] = useState("Checking");
+  const [theme, setTheme] = useState<ThemeMode>("system");
+  const [viewMode, setViewMode] = useState<ViewMode>("simple");
+  const [simpleTile, setSimpleTile] = useState<SimpleTile>(null);
+
+  useEffect(() => {
+    const initial = readStoredTheme();
+    setTheme(initial);
+    applyTheme(initial);
+    setViewMode(readStoredViewMode());
+  }, []);
+
+  const toggleViewMode = useCallback(() => {
+    const next: ViewMode = viewMode === "simple" ? "advanced" : "simple";
+    setViewMode(next);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("n0tune.viewMode", next);
+    }
+  }, [viewMode]);
+
+  const cycleTheme = useCallback(() => {
+    const next: ThemeMode =
+      theme === "system" ? "light" : theme === "light" ? "dark" : "system";
+    setTheme(next);
+    applyTheme(next);
+    if (typeof window !== "undefined") {
+      if (next === "system") {
+        window.localStorage.removeItem("n0tune.theme");
+      } else {
+        window.localStorage.setItem("n0tune.theme", next);
+      }
+    }
+  }, [theme]);
   const [memories, setMemories] = useState<Memory[]>([]);
   const [style, setStyle] = useState<StyleProfile | null>(null);
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
@@ -476,21 +533,25 @@ export function DashboardApp() {
     });
   }
 
+  const themeLabel =
+    theme === "system" ? "Auto" : theme === "dark" ? "Dark" : "Light";
+  const themeIcon = theme === "dark" ? "◑" : theme === "light" ? "○" : "◐";
+
   return (
-    <main className="min-h-screen bg-field text-ink">
-      <header className="sticky top-0 z-10 border-b border-line bg-white/95 backdrop-blur">
+    <main className="min-h-screen bg-bg text-ink">
+      <header className="sticky top-0 z-10 border-b border-line bg-surface/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:gap-4 sm:px-6">
           <div className="flex items-center gap-3" aria-label="N0Tune">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/logo.png"
-              alt=""
+              alt="N0Tune"
               className="h-8 w-auto block select-none"
               draggable={false}
             />
             <div className="hidden sm:block">
               <div className="text-[15px] font-semibold leading-tight">N0Tune</div>
-              <div className="text-xs text-ink/55 leading-tight">
+              <div className="text-xs text-ink-mute leading-tight">
                 Fine-tune any AI, without fine-tuning
               </div>
             </div>
@@ -498,6 +559,32 @@ export function DashboardApp() {
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <Field label="app_id" value={appId} onChange={setAppId} />
             <Field label="user_id" value={userId} onChange={setUserId} />
+            <button
+              type="button"
+              className="rounded-md border border-line bg-field px-3 py-2 text-sm font-medium text-ink hover:bg-surface"
+              onClick={cycleTheme}
+              aria-label={`Theme: ${themeLabel}. Click to cycle.`}
+              title={`Theme: ${themeLabel} (click to cycle Auto → Light → Dark)`}
+            >
+              <span aria-hidden="true" className="mr-1">{themeIcon}</span>
+              {themeLabel}
+            </button>
+            <button
+              type="button"
+              className="rounded-md border border-line bg-field px-3 py-2 text-sm font-medium text-ink hover:bg-surface"
+              onClick={toggleViewMode}
+              aria-label={`View mode: ${viewMode}. Click to switch.`}
+              title={
+                viewMode === "simple"
+                  ? "Simple view (show 3 task tiles). Click for Advanced."
+                  : "Advanced view (full operator sidebar). Click for Simple."
+              }
+            >
+              <span aria-hidden="true" className="mr-1">
+                {viewMode === "simple" ? "▦" : "⚙"}
+              </span>
+              {viewMode === "simple" ? "Simple" : "Advanced"}
+            </button>
             <button
               type="button"
               className="button"
@@ -511,12 +598,42 @@ export function DashboardApp() {
 
       {notice ? (
         <div className="mx-auto mt-4 max-w-7xl px-4 sm:px-6">
-          <div className="rounded-md border border-rust/30 bg-rust/10 p-3 text-sm">
+          <div className="rounded-md border border-warn-line bg-warn-soft p-3 text-sm text-warn">
             {notice}
           </div>
         </div>
       ) : null}
 
+      {viewMode === "simple" ? (
+        <SimpleMode
+          status={status}
+          memories={memories}
+          documents={documents}
+          cache={cache}
+          activeTile={simpleTile}
+          setActiveTile={setSimpleTile}
+          message={message}
+          setMessage={setMessage}
+          preview={preview}
+          onPreview={previewContext}
+          style={style}
+          onCreateMemory={createMemory}
+          onDeleteMemory={deleteMemory}
+          onUpdateStyle={updateStyle}
+          labUserA={labUserA}
+          setLabUserA={setLabUserA}
+          labUserB={labUserB}
+          setLabUserB={setLabUserB}
+          labQuestion={labQuestion}
+          setLabQuestion={setLabQuestion}
+          labPreviewA={labPreviewA}
+          labPreviewB={labPreviewB}
+          labNotice={labNotice}
+          labRunning={labRunning}
+          onSeedLab={() => void seedContextLab()}
+          onRunLab={runContextLab}
+        />
+      ) : (
       <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 md:flex-row">
         <nav
           className="md:w-56 md:shrink-0 md:sticky md:top-[68px] md:self-start"
@@ -544,8 +661,8 @@ export function DashboardApp() {
                         onClick={() => setTab(item)}
                         className={`shrink-0 rounded-md border px-3 py-2 text-left text-sm font-medium transition-colors ${
                           active
-                            ? "border-ink bg-white text-ink shadow-card"
-                            : "border-transparent bg-transparent text-ink/64 hover:bg-white hover:text-ink"
+                            ? "border-ink bg-surface text-ink shadow-card"
+                            : "border-transparent bg-transparent text-ink-mute hover:bg-surface hover:text-ink"
                         }`}
                       >
                         <span className="block">{item}</span>
@@ -611,14 +728,6 @@ export function DashboardApp() {
             cache={cache}
           />
         )}
-        {tab === "Context" && (
-          <ContextPanel
-            message={message}
-            setMessage={setMessage}
-            preview={preview}
-            onPreview={previewContext}
-          />
-        )}
         {tab === "Cache" && <CachePanel cache={cache} onClear={clearCache} />}
         {tab === "Audit" && (
           <AuditPanel
@@ -632,6 +741,7 @@ export function DashboardApp() {
         {tab === "Security" && <SecurityPanel />}
         </section>
       </div>
+      )}
     </main>
   );
 }
@@ -660,7 +770,7 @@ function Field({
 
 function Panel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-line bg-white p-5 shadow-panel">
+    <div className="rounded-lg border border-line bg-surface p-5 shadow-panel">
       {children}
     </div>
   );
@@ -678,18 +788,90 @@ function Overview({
   cache: CacheList | null;
 }) {
   return (
-    <div className="grid gap-4 lg:grid-cols-4">
-      {[
-        ["API", status],
-        ["Memories", String(memories.length)],
-        ["Documents", String(documents.length)],
-        ["Cache entries", String(cache?.total ?? 0)],
-      ].map(([label, value]) => (
-        <Panel key={label}>
-          <p className="text-sm text-ink/56">{label}</p>
-          <p className="mt-2 text-2xl font-semibold">{value}</p>
-        </Panel>
-      ))}
+    <div className="space-y-4">
+      <Panel>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="max-w-2xl">
+            <h2 className="text-lg font-semibold">Gateway operator console</h2>
+            <p className="mt-1 text-sm text-ink-mute leading-6">
+              This dashboard inspects the running N0Tune Gateway. It is
+              <strong className="text-ink"> not the end-user app</strong> —
+              real users get their experience inside their own tool (Claude
+              Code, Cursor, Codex, the N0Tune Desktop app). Use this surface
+              to debug retrievals, watch the compile pipeline, or audit who
+              accessed what.
+            </p>
+          </div>
+          <span className="rounded-md border border-accent/30 bg-accent-soft px-3 py-1 text-xs font-semibold text-accent">
+            operator view · not the product
+          </span>
+        </div>
+
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
+          <div className="rounded-md border border-line bg-field p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-ink-mute">
+              For end users
+            </p>
+            <p className="mt-1 text-sm leading-6">
+              Run <code className="rounded bg-surface px-1.5 py-0.5 font-mono text-xs">npm run tauri:dev</code> in <code className="rounded bg-surface px-1.5 py-0.5 font-mono text-xs">apps/desktop/</code> — the standalone product.
+            </p>
+          </div>
+          <div className="rounded-md border border-line bg-field p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-ink-mute">
+              For Claude / Cursor / Codex
+            </p>
+            <p className="mt-1 text-sm leading-6">
+              MCP server in <code className="rounded bg-surface px-1.5 py-0.5 font-mono text-xs">.mcp.json</code> — eight <code className="rounded bg-surface px-1.5 py-0.5 font-mono text-xs">n0tune_*</code> tools.
+            </p>
+          </div>
+          <div className="rounded-md border border-line bg-field p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-ink-mute">
+              For any OpenAI-compatible client
+            </p>
+            <p className="mt-1 text-sm leading-6">
+              Point <code className="rounded bg-surface px-1.5 py-0.5 font-mono text-xs">base_url</code> at <code className="rounded bg-surface px-1.5 py-0.5 font-mono text-xs">localhost:8000/v1/openai</code>.
+            </p>
+          </div>
+        </div>
+      </Panel>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          ["API", status],
+          ["Memories", String(memories.length)],
+          ["Documents", String(documents.length)],
+          ["Cache entries", String(cache?.total ?? 0)],
+        ].map(([label, value]) => (
+          <Panel key={label}>
+            <p className="text-sm text-ink-mute">{label}</p>
+            <p
+              className="mt-2 text-2xl font-semibold"
+              style={{ fontVariantNumeric: "tabular-nums" }}
+            >
+              {value}
+            </p>
+          </Panel>
+        ))}
+      </div>
+
+      <Panel>
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-ink-mute">
+          What each tab does
+        </h3>
+        <ul className="mt-3 grid gap-2 sm:grid-cols-2 text-sm leading-6">
+          <li><strong className="text-ink">Context Lab</strong> <span className="text-ink-mute">— compare two users on the same question. Shows that the model never changes; the context does.</span></li>
+          <li><strong className="text-ink">Live trace</strong> <span className="text-ink-mute">— type any prompt, watch retrieval → MMR → token budget render with bars and a pipeline strip.</span></li>
+          <li><strong className="text-ink">Memories</strong> <span className="text-ink-mute">— CRUD over the memory store for the user_id in the header.</span></li>
+          <li><strong className="text-ink">Style</strong> <span className="text-ink-mute">— the persona/tone/format profile that flavours every compile for this user.</span></li>
+          <li><strong className="text-ink">Documents</strong> <span className="text-ink-mute">— what got indexed into pgvector. Each document is split into chunks.</span></li>
+          <li><strong className="text-ink">Cache</strong> <span className="text-ink-mute">— semantic cache entries. Same question + unchanged deps = no model call.</span></li>
+          <li><strong className="text-ink">Audit</strong> <span className="text-ink-mute">— sensitive-op log. Needs an owner/admin API key.</span></li>
+          <li><strong className="text-ink">Security</strong> <span className="text-ink-mute">— the safety guarantees in plain English.</span></li>
+        </ul>
+        <p className="mt-4 text-xs text-ink-mute">
+          The two inputs in the header (<code className="rounded bg-field px-1.5 py-0.5 font-mono">app_id</code> · <code className="rounded bg-field px-1.5 py-0.5 font-mono">user_id</code>) scope every tab below. Switch the user_id to see another user&apos;s memories / style. <code className="rounded bg-field px-1.5 py-0.5 font-mono">demo</code> + <code className="rounded bg-field px-1.5 py-0.5 font-mono">user_123</code> is the seed pair.
+        </p>
+      </Panel>
     </div>
   );
 }
@@ -795,12 +977,22 @@ function Memories({
     <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
       <Panel>
         <h2 className="text-lg font-semibold">Save memory</h2>
+        <p className="mt-1 text-xs text-ink-mute leading-5">
+          Memories are scoped to the user_id in the header. Type is one of
+          preference · fact · goal · project · correction · style.
+        </p>
         <form className="mt-4 space-y-3" onSubmit={onCreate}>
-          <input className="input" name="type" defaultValue="preference" />
+          <input
+            className="input"
+            name="type"
+            defaultValue="preference"
+            aria-label="Memory type"
+          />
           <textarea
             className="input min-h-28"
             name="text"
             placeholder="User prefers concise architecture notes."
+            aria-label="Memory text"
           />
           <input
             className="input"
@@ -810,30 +1002,45 @@ function Memories({
             min="0"
             max="1"
             defaultValue="0.8"
+            aria-label="Confidence 0 to 1"
           />
           <button className="button">Save</button>
         </form>
       </Panel>
       <Panel>
-        <h2 className="text-lg font-semibold">Memory list</h2>
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="text-lg font-semibold">Memory list</h2>
+          <span className="text-xs text-ink-mute">
+            {memories.length} {memories.length === 1 ? "memory" : "memories"}
+          </span>
+        </div>
         <div className="mt-4 space-y-3">
-          {memories.map((memory) => (
-            <div className="rounded-md border border-line p-3" key={memory.id}>
-              <div className="flex justify-between gap-3 text-sm">
-                <span className="font-semibold">{memory.type}</span>
-                <span>{Math.round(memory.confidence * 100)}%</span>
+          {memories.length === 0 ? (
+            <p className="rounded-md border border-dashed border-line bg-field p-4 text-sm text-ink-mute">
+              No memories yet for this user_id. Save one on the left, or
+              switch the <code className="rounded bg-surface px-1.5 py-0.5 font-mono text-xs">user_id</code> in the header to inspect another user.
+            </p>
+          ) : (
+            memories.map((memory) => (
+              <div className="rounded-md border border-line p-3" key={memory.id}>
+                <div className="flex justify-between gap-3 text-sm">
+                  <span className="font-semibold">{memory.type}</span>
+                  <span style={{ fontVariantNumeric: "tabular-nums" }}>
+                    {Math.round(memory.confidence * 100)}%
+                  </span>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-ink break-words">
+                  {memory.text}
+                </p>
+                <button
+                  className="mt-3 rounded-md border border-line px-3 py-1 text-xs font-semibold hover:bg-field"
+                  onClick={() => onDelete(memory.id)}
+                >
+                  Delete
+                </button>
               </div>
-              <p className="mt-2 text-sm leading-6 text-ink/72">
-                {memory.text}
-              </p>
-              <button
-                className="mt-3 rounded-md border border-line px-3 py-1 text-xs font-semibold"
-                onClick={() => onDelete(memory.id)}
-              >
-                Delete
-              </button>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </Panel>
     </div>
@@ -919,7 +1126,7 @@ function Documents({
                   key={chunk.id}
                 >
                   <p className="line-clamp-3">{chunk.text}</p>
-                  <p className="mt-2 text-xs text-rust">
+                  <p className="mt-2 text-xs text-warn">
                     risk {chunk.injection_risk_score.toFixed(2)}
                   </p>
                 </div>
@@ -928,39 +1135,6 @@ function Documents({
           ))}
         </div>
       </Panel>
-    </div>
-  );
-}
-
-function ContextPanel({
-  message,
-  setMessage,
-  preview,
-  onPreview,
-}: {
-  message: string;
-  setMessage: (value: string) => void;
-  preview: ContextPreview | null;
-  onPreview: (event?: FormEvent<HTMLFormElement>) => void;
-}) {
-  return (
-    <div className="grid gap-4 lg:grid-cols-[420px_1fr]">
-      <Panel>
-        <h2 className="text-lg font-semibold">Context preview</h2>
-        <form className="mt-4 space-y-3" onSubmit={onPreview}>
-          <textarea
-            className="input min-h-36"
-            value={message}
-            onChange={(event) => setMessage(event.target.value)}
-          />
-          <button className="button">Compile context</button>
-        </form>
-      </Panel>
-      <PreviewCard
-        label="Current user"
-        userId="selected header user"
-        preview={preview}
-      />
     </div>
   );
 }
@@ -1239,9 +1413,9 @@ function PreviewCard({
   return (
     <Panel>
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <h3 className="text-lg font-semibold">{label}</h3>
-          <p className="text-xs text-ink/56">{userId}</p>
+          <p className="text-xs text-ink-mute break-words">{userId}</p>
         </div>
         <div className="flex flex-wrap gap-2 text-xs">
           <Metric
@@ -1259,7 +1433,7 @@ function PreviewCard({
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+      <div className="mt-4 grid min-w-0 gap-3 lg:grid-cols-2">
         <DetailList
           title="Selected memories"
           empty="No selected memories"
@@ -1281,7 +1455,7 @@ function PreviewCard({
         />
       ) : null}
 
-      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+      <div className="mt-4 grid min-w-0 gap-3 lg:grid-cols-2">
         <DetailList
           title="Trace: selected"
           empty="No trace yet"
@@ -1294,7 +1468,7 @@ function PreviewCard({
         />
       </div>
 
-      <pre className="mt-4 max-h-[420px] overflow-auto rounded-md bg-ink p-4 text-xs leading-5 text-white">
+      <pre className="mt-4 max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-md bg-ink p-4 text-xs leading-5 text-bg">
         {preview?.compiled_context ?? "No preview yet."}
       </pre>
     </Panel>
@@ -1321,16 +1495,16 @@ function DetailList({
   tone?: "neutral" | "warning";
 }) {
   return (
-    <section className="mt-4">
+    <section className="mt-4 min-w-0">
       <h4 className="text-sm font-semibold">{title}</h4>
       <div className="mt-2 space-y-2">
         {items.length ? (
           items.map((item) => (
             <p
-              className={`rounded-md border p-2 text-xs leading-5 ${
+              className={`rounded-md border p-2 text-xs leading-5 break-words whitespace-pre-wrap ${
                 tone === "warning"
-                  ? "border-rust/30 bg-rust/10"
-                  : "border-line bg-field"
+                  ? "border-warn-line bg-warn-soft text-warn"
+                  : "border-line bg-field text-ink"
               }`}
               key={item}
             >
@@ -1338,7 +1512,7 @@ function DetailList({
             </p>
           ))
         ) : empty ? (
-          <p className="rounded-md border border-line bg-field p-2 text-xs text-ink/58">
+          <p className="rounded-md border border-line bg-field p-2 text-xs text-ink-mute">
             {empty}
           </p>
         ) : null}
@@ -1441,13 +1615,247 @@ function AuditPanel({
               {log.resource_type} {log.resource_id ?? ""} role{" "}
               {log.actor_role ?? "unknown"}
             </p>
-            <pre className="mt-2 overflow-auto rounded-md bg-white p-2 text-xs">
+            <pre className="mt-2 overflow-auto rounded-md bg-surface p-2 text-xs text-ink">
               {JSON.stringify(log.metadata_json, null, 2)}
             </pre>
           </div>
         ))}
       </div>
     </Panel>
+  );
+}
+
+/**
+ * Simple mode — the default view for non-operators.
+ *
+ * Three large tiles map to the three things a real user wants to do
+ * with N0Tune: see how the system thinks (Try it), edit their memory
+ * shelf (Manage memories), and prove the differentiator with a
+ * side-by-side persona comparison (Compare).
+ *
+ * Operators flip the header toggle to "Advanced" to get the full
+ * 8-tab surface. The mode persists in localStorage under "n0tune.viewMode".
+ */
+function SimpleMode({
+  status,
+  memories,
+  documents,
+  cache,
+  activeTile,
+  setActiveTile,
+  message,
+  setMessage,
+  preview,
+  onPreview,
+  style,
+  onCreateMemory,
+  onDeleteMemory,
+  onUpdateStyle,
+  labUserA,
+  setLabUserA,
+  labUserB,
+  setLabUserB,
+  labQuestion,
+  setLabQuestion,
+  labPreviewA,
+  labPreviewB,
+  labNotice,
+  labRunning,
+  onSeedLab,
+  onRunLab,
+}: {
+  status: string;
+  memories: Memory[];
+  documents: DocumentItem[];
+  cache: CacheList | null;
+  activeTile: SimpleTile;
+  setActiveTile: (tile: SimpleTile) => void;
+  message: string;
+  setMessage: (value: string) => void;
+  preview: ContextPreview | null;
+  onPreview: (event?: FormEvent<HTMLFormElement>) => void;
+  style: StyleProfile | null;
+  onCreateMemory: (event: FormEvent<HTMLFormElement>) => void;
+  onDeleteMemory: (memoryId: string) => void;
+  onUpdateStyle: (event: FormEvent<HTMLFormElement>) => void;
+  labUserA: string;
+  setLabUserA: (value: string) => void;
+  labUserB: string;
+  setLabUserB: (value: string) => void;
+  labQuestion: string;
+  setLabQuestion: (value: string) => void;
+  labPreviewA: ContextPreview | null;
+  labPreviewB: ContextPreview | null;
+  labNotice: string;
+  labRunning: boolean;
+  onSeedLab: () => void;
+  onRunLab: (event?: FormEvent<HTMLFormElement>) => void;
+}) {
+  const tiles: {
+    id: NonNullable<SimpleTile>;
+    icon: string;
+    title: string;
+    blurb: string;
+  }[] = [
+    {
+      id: "try",
+      icon: "▶",
+      title: "Try it",
+      blurb:
+        "Type any question. Watch retrieval, MMR diversity, token math, and the compiled prompt render live.",
+    },
+    {
+      id: "memories",
+      icon: "✎",
+      title: "Manage memories",
+      blurb:
+        "See, save, and edit what your AI remembers about you. Edit your style profile here too.",
+    },
+    {
+      id: "compare",
+      icon: "⇄",
+      title: "Compare two users",
+      blurb:
+        "Same question, two users, two different compiled contexts. The 'same model, different person' demo.",
+    },
+  ];
+
+  return (
+    <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6">
+      <section>
+        <div className="flex flex-wrap items-baseline justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-semibold">What do you want to do?</h1>
+            <p className="mt-1 text-sm text-ink-mute">
+              Three things power the whole product. Pick one — it expands
+              below. Want the full operator surface? Flip the header to
+              <strong className="text-ink"> Advanced</strong>.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-ink-mute">
+            <span
+              className="rounded-md border border-line bg-field px-2 py-1"
+              style={{ fontVariantNumeric: "tabular-nums" }}
+            >
+              gateway · {status}
+            </span>
+            <span
+              className="rounded-md border border-line bg-field px-2 py-1"
+              style={{ fontVariantNumeric: "tabular-nums" }}
+            >
+              {memories.length} memories · {documents.length} docs ·{" "}
+              {cache?.total ?? 0} cached
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          {tiles.map((tile) => {
+            const active = activeTile === tile.id;
+            return (
+              <button
+                key={tile.id}
+                type="button"
+                onClick={() => setActiveTile(active ? null : tile.id)}
+                aria-pressed={active}
+                className={`group text-left rounded-lg border p-5 transition-all ${
+                  active
+                    ? "border-accent bg-accent-soft shadow-card"
+                    : "border-line bg-surface shadow-panel hover:-translate-y-0.5 hover:shadow-card"
+                }`}
+              >
+                <div className="flex items-baseline gap-2">
+                  <span
+                    aria-hidden="true"
+                    className={`text-2xl leading-none ${
+                      active ? "text-accent" : "text-ink"
+                    }`}
+                  >
+                    {tile.icon}
+                  </span>
+                  <h2
+                    className={`text-lg font-semibold ${
+                      active ? "text-accent" : "text-ink"
+                    }`}
+                  >
+                    {tile.title}
+                  </h2>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-ink-mute">
+                  {tile.blurb}
+                </p>
+                <p
+                  className={`mt-3 text-xs font-semibold uppercase tracking-wide ${
+                    active ? "text-accent" : "text-ink-mute"
+                  }`}
+                  aria-hidden="true"
+                >
+                  {active ? "Open ↓" : "Click to open"}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {activeTile === "try" && (
+        <LiveTracePanel
+          message={message}
+          setMessage={setMessage}
+          preview={preview}
+          onPreview={onPreview}
+          cache={cache}
+        />
+      )}
+
+      {activeTile === "memories" && (
+        <div className="space-y-4">
+          <StylePanel style={style} onSubmit={onUpdateStyle} />
+          <Memories
+            memories={memories}
+            onCreate={onCreateMemory}
+            onDelete={onDeleteMemory}
+          />
+        </div>
+      )}
+
+      {activeTile === "compare" && (
+        <ContextLab
+          userA={labUserA}
+          setUserA={setLabUserA}
+          userB={labUserB}
+          setUserB={setLabUserB}
+          question={labQuestion}
+          setQuestion={setLabQuestion}
+          previewA={labPreviewA}
+          previewB={labPreviewB}
+          notice={labNotice}
+          running={labRunning}
+          onSeed={onSeedLab}
+          onRun={onRunLab}
+        />
+      )}
+
+      {!activeTile && (
+        <section
+          className="rounded-lg border border-dashed border-line bg-field p-6 text-center"
+          aria-label="Helper"
+        >
+          <p className="text-sm text-ink-mute leading-6">
+            Nothing open yet. Pick a tile above. Or read the{" "}
+            <a
+              href="https://github.com/MITPOAI/N0Tune"
+              target="_blank"
+              rel="noreferrer"
+              className="underline"
+            >
+              project README
+            </a>{" "}
+            if you&apos;re new here.
+          </p>
+        </section>
+      )}
+    </div>
   );
 }
 

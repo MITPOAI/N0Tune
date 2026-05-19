@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>N0Tune</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #faf9f6;
+        --surface: #ffffff;
+        --line: #e7e5df;
+        --ink: #18130c;
+        --ink-mute: #5b554c;
+        --accent: #2c4a8f;
+        --accent-soft: #e3ebf9;
+        --warn: #b75221;
+        --field: #f3f1ea;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #14110d;
+          --surface: #1d1916;
+          --line: #3d3930;
+          --ink: #f4eee4;
+          --ink-mute: #b6ad9d;
+          --accent: #94b3ef;
+          --accent-soft: #1f2a44;
+          --warn: #e89b6f;
+          --field: #221d18;
+        }
+      }
+      body {
+        margin: 0;
+        width: 320px;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      #root { padding: 14px 16px; }
+    </style>
+  </head>
+  <body>
+    <div id="root">Loading…</div>
+    <script type="module" src="/src/popup/main.tsx"></script>
+  </body>
+</html>

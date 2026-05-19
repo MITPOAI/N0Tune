@@ -38,8 +38,14 @@ Commands:
   memory consolidate           Cluster + collapse similar memories. Use --dry-run
                                to preview without writing.
 
-  persona export [--out file]  Export the current persona shell.
-  persona import <file>        Import a .n0tune persona file (validates shape only).
+  persona export [--out file]  Export the current persona shell (no private memories).
+  persona import <ref>         Apply a .n0tune persona to --user-id.
+                               <ref> can be:
+                                 ./local/path.n0tune.json
+                                 senior-staff-eng                  (community repo)
+                                 gh:owner/repo/path/to.n0tune.json (any GitHub repo)
+                               Patches the style profile and creates starter memories
+                               (skips duplicates by exact text match).
 
   files sync <folder>          Walk Markdown files and POST them to the Gateway.
 
@@ -128,6 +134,59 @@ async function gatewayRequest(method, path, { flags, body }) {
     throw new Error(`HTTP ${response.status} on ${path}: ${detail}`);
   }
   return parsed;
+}
+
+/**
+ * Resolve a persona reference into the file's text content.
+ *
+ * Accepts three forms:
+ *   - `./local/path.n0tune.json`  → readFile
+ *   - `gh:owner/repo/path/to.json` → https raw.githubusercontent.com
+ *   - bare name like `senior-staff-eng` → resolve against
+ *       `N0TUNE_PERSONAS_URL` (default points at the public
+ *       community repo). The `.n0tune.json` suffix is added if absent.
+ *
+ * Anything starting with `./`, `/`, or a drive letter is treated as
+ * a local path. `http://` and `https://` URLs are fetched verbatim.
+ */
+async function fetchPersonaContent(ref) {
+  // gh:owner/repo/path
+  if (ref.startsWith("gh:")) {
+    const after = ref.slice(3);
+    const [owner, repo, ...rest] = after.split("/");
+    if (!owner || !repo || rest.length === 0) {
+      throw new Error(`malformed gh: ref. expected gh:owner/repo/path, got ${ref}`);
+    }
+    const url = `https://raw.githubusercontent.com/${owner}/${repo}/main/${rest.join("/")}`;
+    return await httpsFetchText(url);
+  }
+  if (ref.startsWith("http://") || ref.startsWith("https://")) {
+    return await httpsFetchText(ref);
+  }
+  // Local path heuristics: ./, ../, /, or Windows drive letter, or .json suffix
+  const looksLocal =
+    ref.startsWith("./") ||
+    ref.startsWith("../") ||
+    ref.startsWith("/") ||
+    /^[A-Za-z]:[\\/]/.test(ref) ||
+    ref.endsWith(".json");
+  if (looksLocal) {
+    return await readFile(resolve(ref), "utf-8");
+  }
+  // Bare name → community repo
+  const base =
+    process.env.N0TUNE_PERSONAS_URL ??
+    "https://raw.githubusercontent.com/MITPOAI/N0Tune/main/personas/";
+  const name = ref.endsWith(".n0tune.json") ? ref : `${ref}.n0tune.json`;
+  return await httpsFetchText(base.replace(/\/$/, "") + "/" + name);
+}
+
+async function httpsFetchText(url) {
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`fetch ${url} → HTTP ${res.status}`);
+  }
+  return await res.text();
 }
 
 async function runDoctor({ flags }) {
@@ -333,12 +392,26 @@ async function runPersona(positional, { flags }) {
       return 0;
     }
     case "import": {
-      const path = rest[0];
-      if (!path) {
-        console.error("persona import: missing file");
+      const ref = rest[0];
+      if (!ref) {
+        console.error(
+          "persona import: missing <file-or-name>\n" +
+            "  examples:\n" +
+            "    n0tune persona import ./personas/senior-staff-eng.n0tune.json\n" +
+            "    n0tune persona import senior-staff-eng\n" +
+            "    n0tune persona import gh:MITPOAI/N0Tune/personas/marketing-lead.n0tune.json",
+        );
         return 1;
       }
-      const content = await readFile(resolve(path), "utf-8");
+
+      let content;
+      try {
+        content = await fetchPersonaContent(ref);
+      } catch (error) {
+        console.error(`persona import: ${error.message}`);
+        return 1;
+      }
+
       let parsed;
       try {
         parsed = JSON.parse(content);
@@ -350,15 +423,72 @@ async function runPersona(positional, { flags }) {
         console.error("persona import: not a recognized .n0tune file");
         return 1;
       }
+
+      const style = parsed.persona?.style;
+      if (!style || typeof style !== "object") {
+        console.error("persona import: persona.style is required");
+        return 1;
+      }
+
+      // Apply style profile
+      const styleResult = await gatewayRequest(
+        "PATCH",
+        `/v1/users/${encodeURIComponent(flags.userId)}/style`,
+        {
+          flags,
+          body: { app_id: flags.appId, profile_json: style },
+        },
+      );
+
+      // Apply starter memories (dedupe by exact text)
+      const incoming = Array.isArray(parsed.memories) ? parsed.memories : [];
+      let existing = [];
+      if (incoming.length) {
+        existing = await gatewayRequest(
+          "GET",
+          `/v1/memories?app_id=${encodeURIComponent(flags.appId)}&user_id=${encodeURIComponent(flags.userId)}&limit=200`,
+          { flags },
+        );
+      }
+      const existingTexts = new Set(existing.map((m) => m.text));
+
+      let created = 0;
+      let skipped = 0;
+      for (const mem of incoming) {
+        if (!mem?.text || existingTexts.has(mem.text)) {
+          skipped += 1;
+          continue;
+        }
+        await gatewayRequest("POST", "/v1/memories", {
+          flags,
+          body: {
+            app_id: flags.appId,
+            user_id: flags.userId,
+            type: mem.type ?? "preference",
+            text: mem.text,
+            confidence: typeof mem.confidence === "number" ? mem.confidence : 0.8,
+          },
+        });
+        created += 1;
+      }
+
       console.log(
         JSON.stringify(
-          { ok: true, parsed: { name: parsed.persona?.name, version: parsed.version } },
+          {
+            ok: true,
+            persona: { name: parsed.persona?.name, version: parsed.version },
+            applied: {
+              user_id: flags.userId,
+              app_id: flags.appId,
+              style_fields: Object.keys(style),
+              memories_created: created,
+              memories_skipped_as_duplicate: skipped,
+              style_updated_at: styleResult?.updated_at,
+            },
+          },
           null,
           2,
         ),
-      );
-      console.log(
-        "Note: writing to a persona endpoint is on the v0.5 roadmap; this is the parse step.",
       );
       return 0;
     }

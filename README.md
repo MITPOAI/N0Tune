@@ -15,6 +15,8 @@
   <a href="docs/how-it-works.md">How it works</a> ·
   <a href="docs/context-tuning.md">Context-tuning</a> ·
   <a href="docs/wire-to-claude.md">Wire to Claude</a> ·
+  <a href="apps/extension">Browser extension</a> ·
+  <a href="personas">Personas</a> ·
   <a href="docs/roadmap.md">Roadmap</a>
 </p>
 
@@ -45,7 +47,9 @@ no per-provider lock-in.
 | You want…                                                  | Use…                                                                            |
 | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
 | A standalone personal AI on your machine                   | **N0Tune Desktop** — tray + hotkey + chat + memory + file context (Tauri app)   |
-| Personalization inside Claude Code / Cursor / Codex CLI    | **N0Tune MCP server** — 7 tools your AI tool calls                              |
+| Personalization inside Claude Code / Cursor / Codex CLI    | **N0Tune MCP server** — 8 tools your AI tool calls                              |
+| Personalization on **claude.ai** and **ChatGPT** web UIs   | **[N0Tune Browser Extension](apps/extension)** — *scaffold ships in v0.1.5; DOM injection lands in v0.2* |
+| Ready-made personas you can import in one command          | **[Persona dotfiles](personas)** — 6 curated `.n0tune` files, one-line CLI import |
 | A team / app backend                                       | **N0Tune Gateway** — FastAPI server + dashboard + audit logs + RBAC             |
 | To integrate from code                                     | **N0Tune SDKs** — Python + TypeScript, plus LangChain / LlamaIndex / Vercel AI  |
 
@@ -66,16 +70,62 @@ N0Tune is **not**:
 
 ## Product Editions
 
-| Edition            | Who it is for                                             | Status (v0.1.1)                                                                              |
-| ------------------ | --------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| **N0Tune Desktop** | Normal users who want armor around their AI tools         | Tauri app: tray + global hotkey + status overlay + SQLite + OS keychain + fallback chat      |
-| **N0Tune MCP**     | Claude Desktop, Claude Code, Cursor, Codex CLI            | Stdio MCP server with seven tools — production-ready integration path                        |
-| **N0Tune Gateway** | Power users + teams running an API/server                 | FastAPI + Postgres + pgvector + Redis + dashboard + audit logs + RBAC + continual-learning   |
-| **N0Tune Core**    | Developers building context-tuned apps                    | Python package with the shared compiler / security / token primitives                        |
-| **N0Tune CLI**     | Developers and power users                                | `n0tune` CLI: doctor, demo, compile, memory consolidate, persona, files, mcp install         |
+| Edition              | Who it is for                                             | Status (v0.1.5)                                                                              |
+| -------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| **N0Tune Desktop**   | Normal users who want a personal AI on their machine      | Tauri app: tray + global hotkey + status overlay + SQLite + OS keychain + fallback chat      |
+| **N0Tune MCP**       | Claude Desktop, Claude Code, Cursor, Codex CLI            | Stdio MCP server with eight tools — production-ready integration path                        |
+| **N0Tune Extension** | People who chat in claude.ai / ChatGPT web UIs            | Manifest V3 extension scaffold: popup config + background worker — DOM injection lands in v0.2 |
+| **N0Tune Gateway**   | Power users + teams running an API/server                 | FastAPI + Postgres + pgvector + Redis + dashboard + audit logs + RBAC + continual-learning   |
+| **N0Tune Core**      | Developers building context-tuned apps                    | Python package with the shared compiler / security / token primitives                        |
+| **N0Tune CLI**       | Developers and power users                                | `n0tune` CLI: doctor, demo, compile, memory consolidate, persona, files, mcp install         |
+| **Persona dotfiles** | Anyone who wants ready-made personalisation               | 6 curated `.n0tune` files in `personas/`; `n0tune persona import senior-staff-eng` to apply  |
 
-The public surface is **Desktop + MCP**. Gateway powers it underneath
-and stays available as a server mode for teams.
+The public surface is **Desktop + MCP + Extension**. Gateway powers them
+underneath and stays available as a server mode for teams.
+
+## Browser extension (v0.1.5 scaffold → v0.2 full)
+
+A Manifest V3 WebExtension that brings N0Tune memory into the
+**claude.ai** and **chat.openai.com** web UIs — same memory store as the
+Desktop app and the MCP server, just a different surface.
+
+```bash
+# Build + load
+npm install
+npm --workspace apps/extension run build
+
+# Chrome / Edge:  chrome://extensions  → Developer mode → Load unpacked → apps/extension/dist/
+# Firefox:        about:debugging      → This Firefox  → Load Temporary Add-on → apps/extension/dist/manifest.json
+```
+
+Click the toolbar icon to configure the Gateway URL, `user_id`, and
+`app_id`. Hit **Test connection** to confirm the popup can reach the
+Gateway.
+
+> **v0.1.5 status:** popup config UI + background service worker + Gateway
+> plumbing are live. DOM injection on the two chat sites is week-2 work —
+> see [`apps/extension/README.md`](apps/extension/README.md) for the full
+> roadmap and target architecture.
+
+## Persona dotfiles
+
+Six curated `.n0tune` files in [`personas/`](personas) — fork the
+directory and PR your own. One-line import:
+
+```bash
+# By bare name (resolves against the community repo)
+node packages/cli/bin/n0tune.mjs persona import senior-staff-eng --user-id $YOU
+
+# Local path
+node packages/cli/bin/n0tune.mjs persona import ./personas/marketing-lead.n0tune.json --user-id $YOU
+
+# Any GitHub repo
+node packages/cli/bin/n0tune.mjs persona import gh:MITPOAI/N0Tune/personas/developer-mentor.n0tune.json --user-id $YOU
+```
+
+Each persona ships a style profile + a small pack of starter memories.
+Schema: [`personas/schema.json`](personas/schema.json). Import flow:
+[`docs/persona-format.md`](docs/persona-format.md).
 
 ## Context Guard (design phase)
 

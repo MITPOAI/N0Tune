@@ -6,6 +6,7 @@
   "workspaces": [
     "apps/dashboard",
     "apps/desktop",
+    "apps/extension",
     "integrations/mcp-server",
     "integrations/vercel-ai-sdk",
     "packages/cli",

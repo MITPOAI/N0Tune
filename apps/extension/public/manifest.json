@@ -1,0 +1,50 @@
+{
+  "manifest_version": 3,
+  "name": "N0Tune",
+  "version": "0.1.5",
+  "description": "Fine-tune any AI, without fine-tuning. Personal memory + style for claude.ai and ChatGPT, powered by your local N0Tune Gateway.",
+  "icons": {
+    "16": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
+  },
+  "permissions": ["storage", "activeTab"],
+  "host_permissions": [
+    "http://localhost:8000/*",
+    "https://claude.ai/*",
+    "https://*.claude.ai/*",
+    "https://chat.openai.com/*",
+    "https://chatgpt.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "N0Tune",
+    "default_icon": {
+      "16": "icon.png",
+      "48": "icon.png",
+      "128": "icon.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://claude.ai/*",
+        "https://*.claude.ai/*",
+        "https://chat.openai.com/*",
+        "https://chatgpt.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "n0tune@mitpoai.dev",
+      "strict_min_version": "115.0"
+    }
+  }
+}

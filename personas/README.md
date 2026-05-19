@@ -5,14 +5,21 @@ memory mode you want a model to project. Personas are portable
 (`.n0tune.json` files); they are **not** the same thing as your private
 memory, which never travels by default.
 
-## The four shipped presets
+## The six shipped presets
 
 | File                                | Persona                          | Memory mode | Best for                                   |
 | ----------------------------------- | -------------------------------- | ----------- | ------------------------------------------ |
 | `developer-mentor.n0tune.json`      | A patient senior engineer        | `auto`      | Pairing on architecture or new languages   |
+| `senior-staff-eng.n0tune.json`      | Code-first staff eng             | `auto`      | Code-heavy work, terse diffs, no fluff     |
+| `marketing-lead.n0tune.json`        | Punchy customer-quote-first lead | `auto`      | Campaign copy, headlines, one-pagers       |
 | `study-buddy.n0tune.json`           | Upbeat tutor who quizzes you     | `review`    | Learning a new topic                       |
 | `writing-coach.n0tune.json`         | Restrained editor                | `manual`    | Drafts where you control what's remembered |
 | `startup-advisor.n0tune.json`       | Pragmatic sparring partner       | `auto`      | Pitching, validating, risk-naming          |
+
+The two new entries (`senior-staff-eng`, `marketing-lead`) include
+**starter memories** at the top-level `memories` field — the importer
+applies them via `POST /v1/memories` after patching the style profile.
+This is the pattern v0.2 personas use to ship richer starter packs.
 
 Each is a small JSON file you can read in a text editor. Open any of them
 to see the format.

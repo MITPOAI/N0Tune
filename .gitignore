@@ -106,3 +106,23 @@ docker-compose.override.yml
 # Local generated reports
 reports/
 artifacts/
+
+# Local screenshots + scratch images (developer-only verification artefacts)
+# Anything at the repo root that starts with a dot and is a PNG/JPG/JPEG/WEBP.
+# Real assets live under img/, apps/*/public/, etc. — those stay tracked.
+/.*.png
+/.*.jpg
+/.*.jpeg
+/.*.webp
+/screenshot*.png
+/screenshot*.jpg
+/scenario-*.png
+/livetrace-*.png
+/overview-*.png
+
+# Matrix / contamination / benchmark JSON outputs.
+# The scripts themselves (scripts/*.py) are tracked — only the outputs are not.
+scripts/.matrix_results.json
+scripts/.contamination_results.json
+scripts/.bench_results.json
+scripts/.*.json
