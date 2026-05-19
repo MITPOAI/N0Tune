@@ -28,7 +28,8 @@ def _seed_rule(client: TestClient, **overrides: object) -> dict[str, object]:
         headers={"Authorization": "Bearer replace-with-local-development-key"},
     )
     assert response.status_code == 200, response.text
-    return response.json()
+    body: dict[str, object] = response.json()
+    return body
 
 
 def test_check_endpoint_flags_terminology_drift(client: TestClient) -> None:

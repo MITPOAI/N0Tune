@@ -86,7 +86,7 @@ def test_diversify_keeps_when_below_threshold() -> None:
 def test_diversify_skips_missing_embedding() -> None:
     a = _make_memory("a", "with embedding", [1.0, 0.0])
     b = _make_memory("b", "no embedding", [])
-    b.embedding = None  # type: ignore[assignment]
+    b.embedding = None
 
     kept, dropped = _diversify_memories([(a, 0.9), (b, 0.8)])
     # We never want to silently drop a memory just because its
