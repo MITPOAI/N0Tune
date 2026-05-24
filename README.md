@@ -2,11 +2,14 @@
   <img src="img/logo.png" alt="" width="320" />
 </p>
 
-<p align="center"><strong>Fine-tune any AI. Without fine-tuning.</strong></p>
+<h1 align="center">N0Tune</h1>
+
+<p align="center"><strong>Keep context across Claude, Codex, Cursor, and every AI tool.</strong></p>
 
 <p align="center">
-  Bring your model. N0Tune adds local memory, a persona profile, indexed files,<br/>
-  semantic cache, and a context compiler. Same model. Personal answer.
+  Same project. Same memory. Any AI tool.<br/>
+  N0Tune stores project decisions, session summaries, memory shelves, and
+  handoff capsules so your next AI tool can continue where the last one stopped.
 </p>
 
 <p align="center">
@@ -26,6 +29,17 @@
 
 ## What N0Tune Is
 
+N0Tune is an open-source **shared project context layer for AI tools**.
+It does not fine-tune models or train weights. It context-tunes Claude,
+Codex, Cursor, and custom agents by giving them the same project memory,
+decisions, indexed files, sessions, and Handoff Capsules when they open
+the same folder.
+
+The project folder is the identity. If Claude works in `~/work/app`,
+creates a Handoff Capsule, and Codex opens `~/work/app` next, Codex can
+ask N0Tune for the latest project context instead of making you rewrite a
+handoff doc.
+
 N0Tune is a **context-tuning system**. You bring any model — GPT, Claude,
 Gemini, Qwen, OpenRouter, Ollama, LM Studio, anything OpenAI-compatible —
 and N0Tune adds the personalization layer on top:
@@ -38,20 +52,39 @@ and N0Tune adds the personalization layer on top:
 - **Continual learning** — old similar memories get summarized into denser ones over time.
 - **Provider router** — calls OpenAI / Anthropic / Gemini / any OpenAI-compatible upstream with the compiled prompt.
 
-Fine-tuning changes the model's weights. N0Tune changes the **prompt**.
-Same model. Different prompt. Personal answer. No GPU, no training data,
-no per-provider lock-in.
+N0Tune does not train model weights. It gives each connected tool the same
+project decisions, session summaries, indexed files, and Handoff Capsules so
+the next tool can continue from the same context.
+
+### Claude to Codex Continuation
+
+```bash
+# In the project folder Claude just worked on:
+n0tune project detect
+n0tune session start --tool claude --goal "Ship project-context MCP tools"
+n0tune handoff create --source claude --target codex \
+  "Claude added the API model and routes. Codex should finish CLI/MCP tests."
+
+# Later, in the same folder:
+n0tune project detect
+n0tune handoff continue --target codex --copy
+```
+
+The second tool receives a continuation prompt built from the latest
+Handoff Capsule plus project-scoped memory. If MCP is available, use
+`n0tune_project_detect`, `n0tune_get_latest_handoff`, and
+`n0tune_continue_from_handoff` instead of copying manually.
 
 ### Two surfaces, one system
 
-| You want…                                                  | Use…                                                                            |
-| ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| A standalone personal AI on your machine                   | **N0Tune Desktop** — tray + hotkey + chat + memory + file context (Tauri app)   |
-| Personalization inside Claude Code / Cursor / Codex CLI    | **N0Tune MCP server** — 8 tools your AI tool calls                              |
-| Personalization on **claude.ai** and **ChatGPT** web UIs   | **[N0Tune Browser Extension](apps/extension)** — *scaffold ships in v0.1.5; DOM injection lands in v0.2* |
-| Ready-made personas you can import in one command          | **[Persona dotfiles](personas)** — 6 curated `.n0tune` files, one-line CLI import |
-| A team / app backend                                       | **N0Tune Gateway** — FastAPI server + dashboard + audit logs + RBAC             |
-| To integrate from code                                     | **N0Tune SDKs** — Python + TypeScript, plus LangChain / LlamaIndex / Vercel AI  |
+| You want…                                                | Use…                                                                                                     |
+| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| A standalone personal AI on your machine                 | **N0Tune Desktop** — tray + hotkey + chat + memory + file context (Tauri app)                            |
+| Shared project memory inside Claude Code / Cursor / Codex CLI | **N0Tune MCP server** — memory, context, project, and handoff tools                                  |
+| Personalization on **claude.ai** and **ChatGPT** web UIs | **[N0Tune Browser Extension](apps/extension)** — _scaffold ships in v0.1.5; DOM injection lands in v0.2_ |
+| Ready-made personas you can import in one command        | **[Persona dotfiles](personas)** — 6 curated `.n0tune` files, one-line CLI import                        |
+| A team / app backend                                     | **N0Tune Gateway** — FastAPI server + dashboard + audit logs + RBAC                                      |
+| To integrate from code                                   | **N0Tune SDKs** — Python + TypeScript, plus LangChain / LlamaIndex / Vercel AI                           |
 
 Both surfaces are the same system — same context compiler, same memory
 schema. The Desktop talks to the Gateway via local API; the MCP server
@@ -70,15 +103,16 @@ N0Tune is **not**:
 
 ## Product Editions
 
-| Edition              | Who it is for                                             | Status (v0.1.5)                                                                              |
-| -------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| **N0Tune Desktop**   | Normal users who want a personal AI on their machine      | Tauri app: tray + global hotkey + status overlay + SQLite + OS keychain + fallback chat      |
-| **N0Tune MCP**       | Claude Desktop, Claude Code, Cursor, Codex CLI            | Stdio MCP server with eight tools — production-ready integration path                        |
-| **N0Tune Extension** | People who chat in claude.ai / ChatGPT web UIs            | Manifest V3 extension scaffold: popup config + background worker — DOM injection lands in v0.2 |
-| **N0Tune Gateway**   | Power users + teams running an API/server                 | FastAPI + Postgres + pgvector + Redis + dashboard + audit logs + RBAC + continual-learning   |
-| **N0Tune Core**      | Developers building context-tuned apps                    | Python package with the shared compiler / security / token primitives                        |
-| **N0Tune CLI**       | Developers and power users                                | `n0tune` CLI: doctor, demo, compile, memory consolidate, persona, files, mcp install         |
-| **Persona dotfiles** | Anyone who wants ready-made personalisation               | 6 curated `.n0tune` files in `personas/`; `n0tune persona import senior-staff-eng` to apply  |
+| Edition              | Who it is for                                        | Status (v0.1.6)                                                                                |
+| -------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| **N0Tune Desktop**   | Normal users who want a personal AI on their machine | Tauri app: tray + global hotkey + status overlay + SQLite + OS keychain + fallback chat        |
+| **N0Tune MCP**       | Claude Desktop, Claude Code, Cursor, Codex CLI       | Stdio MCP server with memory, context, project, and handoff tools                              |
+| **N0Tune Dashboard** | Power users wiring providers, MCP, and audit logs    | Command Center, Context Lab, Memory Library, project Sessions, Handoff Capsules, Files, MCP setup, Cache, Security, Audit Logs, Settings |
+| **N0Tune Extension** | People who chat in claude.ai / ChatGPT web UIs       | Manifest V3 extension scaffold: popup config + background worker — DOM injection lands in v0.2 |
+| **N0Tune Gateway**   | Power users + teams running an API/server            | FastAPI + Postgres + pgvector + Redis + dashboard + audit logs + RBAC + continual-learning     |
+| **N0Tune Core**      | Developers building context-tuned apps               | Python package with the shared compiler / security / token primitives                          |
+| **N0Tune CLI**       | Developers and power users                           | `n0tune` CLI: project, session, handoff, memory, context preview, doctor, demo, files, mcp install |
+| **Persona dotfiles** | Anyone who wants ready-made personalisation          | 6 curated `.n0tune` files in `personas/`; `n0tune persona import senior-staff-eng` to apply    |
 
 The public surface is **Desktop + MCP + Extension**. Gateway powers them
 underneath and stays available as a server mode for teams.
@@ -343,6 +377,12 @@ Open:
 
 - Dashboard: `http://localhost:3000`
 - API health: `http://localhost:8000/health?deep=true`
+
+The dashboard is being redesigned around cross-tool project continuity.
+UI-1 includes a liquid-glass AppShell, grouped navigation, status labels for
+live/partial/planned pages, a clearer Command Center, and reusable dashboard
+primitives. The design plan and backend gap audit live in
+[`docs/ui-redesign.md`](docs/ui-redesign.md).
 
 The dashboard includes a **Context Lab** tab for a no-fake-output product demo:
 

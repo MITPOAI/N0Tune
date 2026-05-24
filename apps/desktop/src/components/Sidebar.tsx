@@ -16,18 +16,23 @@ interface RoomDef {
   hint: string;
 }
 
-/** Mansion layout. Each room is a distinct surface, in flow order: */
+/** Mansion layout. Each room is a distinct surface, in flow order.
+ *
+ *  Icons are deliberately geometric (single-glyph monospace) — emoji
+ *  rendered inconsistently across Windows / macOS / Linux at the small
+ *  sidebar size. These glyphs match the Dashboard sidebar so a user
+ *  hopping between Dashboard and Desktop sees the same visual language. */
 const ROOMS_PRIMARY: RoomDef[] = [
-  { key: "home", label: "Home", icon: "⌂", hint: "System map + activity" },
-  { key: "library", label: "Library", icon: "📚", hint: "Memories + files" },
+  { key: "home", label: "Home", icon: "◎", hint: "System map + activity" },
+  { key: "library", label: "Library", icon: "▤", hint: "Memories + files" },
   { key: "atelier", label: "Atelier", icon: "✎", hint: "Persona + style" },
-  { key: "wire", label: "Wire", icon: "🔌", hint: "Provider connections" },
-  { key: "guard", label: "Guard", icon: "⚖", hint: "Alignment + rules" },
-  { key: "forge", label: "Forge", icon: "🔥", hint: "Compile a prompt" },
+  { key: "wire", label: "Wire", icon: "⇌", hint: "Provider connections" },
+  { key: "guard", label: "Guard", icon: "⚿", hint: "Alignment + rules" },
+  { key: "forge", label: "Forge", icon: "▶", hint: "Compile a prompt" },
 ];
 
 const ROOMS_FALLBACK: RoomDef[] = [
-  { key: "chat", label: "Chat", icon: "▢", hint: "Fallback chat" },
+  { key: "chat", label: "Chat", icon: "≡", hint: "Fallback chat" },
 ];
 
 interface SidebarProps {

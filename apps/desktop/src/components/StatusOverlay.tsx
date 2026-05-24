@@ -1,9 +1,11 @@
 import type { BackendStats } from "../types";
+import type { UpdateAvailableEvent } from "../tauri-bridge";
 
 interface StatusOverlayProps {
   stats: BackendStats;
   memoryCount: number;
   providerLabel: string | null;
+  updateAvailable: UpdateAvailableEvent | null;
 }
 
 /**
@@ -23,6 +25,7 @@ export function StatusOverlay({
   stats,
   memoryCount,
   providerLabel,
+  updateAvailable,
 }: StatusOverlayProps) {
   const hitRate =
     stats.chats > 0 ? Math.round((stats.cacheHits / stats.chats) * 100) : 0;
@@ -86,6 +89,22 @@ export function StatusOverlay({
           </span>
         </>
       )}
+      {updateAvailable ? (
+        <>
+          <span className="status-divider" aria-hidden="true">
+            Â·
+          </span>
+          <a
+            className="status-update"
+            href={updateAvailable.release_url}
+            rel="noreferrer"
+            target="_blank"
+            title={`Current ${updateAvailable.current_version}, latest ${updateAvailable.latest_version}`}
+          >
+            Update {updateAvailable.latest_version}
+          </a>
+        </>
+      ) : null}
     </footer>
   );
 }

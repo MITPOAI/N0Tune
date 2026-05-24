@@ -1,7 +1,8 @@
 mod secrets;
 mod storage;
 
-use serde::Serialize;
+use semver::Version;
+use serde::{Deserialize, Serialize};
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager, WindowEvent};
@@ -17,6 +18,19 @@ struct RuntimeInfo {
     tauri: &'static str,
 }
 
+#[derive(Deserialize)]
+struct GithubRelease {
+    tag_name: String,
+    html_url: Option<String>,
+}
+
+#[derive(Clone, Serialize)]
+struct UpdateAvailableEvent {
+    current_version: String,
+    latest_version: String,
+    release_url: String,
+}
+
 /// Minimal "runtime_info" command. The renderer can call this via
 /// `invoke('runtime_info')` to confirm the Rust runtime is alive.
 /// Real memory / chat / file commands ship with the storage layer.
@@ -27,6 +41,61 @@ fn runtime_info() -> RuntimeInfo {
         version: env!("CARGO_PKG_VERSION"),
         tauri: tauri::VERSION,
     }
+}
+
+async fn fetch_update_available() -> Result<Option<UpdateAvailableEvent>, String> {
+    let current_version = env!("CARGO_PKG_VERSION");
+    let response = reqwest::Client::new()
+        .get("https://api.github.com/repos/MITPOAI/N0Tune/releases/latest")
+        .header(reqwest::header::ACCEPT, "application/vnd.github+json")
+        .header(
+            reqwest::header::USER_AGENT,
+            "N0Tune Desktop update check",
+        )
+        .send()
+        .await
+        .map_err(|err| err.to_string())?;
+
+    if response.status() == reqwest::StatusCode::NOT_FOUND {
+        return Ok(None);
+    }
+
+    let release = response
+        .error_for_status()
+        .map_err(|err| err.to_string())?
+        .json::<GithubRelease>()
+        .await
+        .map_err(|err| err.to_string())?;
+
+    let current = Version::parse(current_version).map_err(|err| err.to_string())?;
+    let latest_label = release.tag_name.trim_start_matches('v').to_string();
+    let latest = Version::parse(&latest_label).map_err(|err| err.to_string())?;
+
+    if latest <= current {
+        return Ok(None);
+    }
+
+    Ok(Some(UpdateAvailableEvent {
+        current_version: current_version.to_string(),
+        latest_version: release.tag_name,
+        release_url: release.html_url.unwrap_or_else(|| {
+            "https://github.com/MITPOAI/N0Tune/releases/latest".to_string()
+        }),
+    }))
+}
+
+fn spawn_update_check(app: AppHandle) {
+    tauri::async_runtime::spawn(async move {
+        match fetch_update_available().await {
+            Ok(Some(update)) => {
+                if let Err(err) = app.emit("n0tune://update-available", update) {
+                    eprintln!("n0tune: failed to emit update event: {err}");
+                }
+            }
+            Ok(None) => {}
+            Err(err) => eprintln!("n0tune: update check failed: {err}"),
+        }
+    });
 }
 
 /// Show the main window and focus it. Used by the tray "open" item, the
@@ -146,6 +215,7 @@ pub fn run() {
             if let Err(err) = storage::init(db_path.clone()) {
                 eprintln!("n0tune: storage init failed at {db_path:?}: {err}");
             }
+            spawn_update_check(handle.clone());
 
             // Build the tray menu.
             let open_item = MenuItem::with_id(app, "open", "Show N0Tune", true, None::<&str>)?;

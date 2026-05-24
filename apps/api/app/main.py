@@ -16,6 +16,7 @@ from app.routes.documents import router as documents_router
 from app.routes.health import router as health_router
 from app.routes.memories import router as memories_router
 from app.routes.openai_proxy import router as openai_proxy_router
+from app.routes.projects import router as projects_router
 from app.routes.style import router as style_router
 from app.services.security.rate_limit import build_backend, derive_rate_limit_key
 
@@ -97,6 +98,7 @@ app.include_router(documents_router)
 app.include_router(context_router)
 app.include_router(chat_router)
 app.include_router(openai_proxy_router)
+app.include_router(projects_router)
 app.include_router(cache_router)
 app.include_router(api_keys_router)
 app.include_router(audit_logs_router)

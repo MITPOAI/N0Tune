@@ -40,6 +40,9 @@ async def create_memory(
         text=payload.text,
         confidence=payload.confidence,
         source_message_id=payload.source_message_id,
+        project_id=payload.project_id,
+        session_id=payload.session_id,
+        handoff_id=payload.handoff_id,
         embedding=embed_text(payload.text),
         expires_at=payload.expires_at,
         scope=payload.scope,
@@ -72,6 +75,7 @@ async def create_memory(
 async def list_memories(
     app_id: str = Query(default="demo"),
     user_id: str = Query(...),
+    project_id: str | None = Query(default=None),
     q: str | None = Query(default=None),
     include_deleted: bool = Query(default=False),
     limit: int = Query(default=50, ge=1, le=200),
@@ -81,6 +85,8 @@ async def list_memories(
 ) -> list[MemoryResponse]:
     authorize_app(session, app_id, x_n0tune_api_key, authorization)
     query = select(Memory).where(Memory.app_id == app_id, Memory.user_id == user_id)
+    if project_id is not None:
+        query = query.where(Memory.project_id == project_id)
     if not include_deleted:
         query = query.where(Memory.deleted_at.is_(None))
 

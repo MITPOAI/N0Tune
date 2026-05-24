@@ -1,5 +1,30 @@
 # Testing
 
+## Cross-Tool Project Context
+
+Focused checks:
+
+```bash
+.venv\Scripts\python.exe -m pytest apps/api/app/tests/test_project_context.py
+npm --workspace packages/cli test
+npm --workspace integrations/mcp-server test
+```
+
+`test_project_context.py` covers:
+
+- same folder and nested folder return the same project
+- different folders return different projects
+- project memory search does not leak another project's memory
+- Claude-to-Codex Handoff Capsule continuation prompt includes next steps
+
+CLI tests cover:
+
+- `n0tune project detect`
+- `n0tune memory add --project`
+- `n0tune handoff continue --target codex`
+
+MCP tests verify the project-context tools are exposed.
+
 What "tests pass" means in this repo, and how to run each piece locally.
 
 ## TL;DR
@@ -141,10 +166,13 @@ Manual dashboard product-demo check:
 
 1. Start the stack with `docker compose up -d --wait`.
 2. Open `http://localhost:3000`.
-3. Open `Context Lab`.
-4. Keep or edit the User A and User B ids.
-5. Click `Seed demo`.
-6. Confirm both side-by-side panels show selected memories, selected docs, compiled context, token estimate, token savings, warnings, and trace entries.
+3. Confirm `Command Center` renders the liquid-glass AppShell, status pills, memory/doc/cache cards, and quick context preview.
+4. Open `Context Lab`.
+5. Keep or edit the User A and User B ids.
+6. Click `Seed demo`.
+7. Confirm both side-by-side panels show selected memories, selected docs, compiled context, token estimate, token savings, warnings, and trace entries.
+8. Open `Memory Library`, `Files`, `Cache`, `Security`, and `Audit Logs` to confirm live pages still load.
+9. Open `Sessions`, `Handoff`, `Models`, `MCP & Plugins`, and `Settings` to confirm incomplete features are labeled `Planned` or `Partial`.
 
 Context Lab intentionally uses `/v1/context/preview` only. It should not display a fabricated assistant answer.
 
@@ -195,22 +223,22 @@ These run in CI but tolerate failures (`continue-on-error: true`) so a single up
 Context Guard is design-only at v0.1.2. When CG-1 onward lands, the
 test plan is:
 
-| # | Test                                                                            | Layer                                 |
-| - | ------------------------------------------------------------------------------- | ------------------------------------- |
-| 1 | `terminology` rule catches "fine-tunes GPT" / "trains Claude"                   | rule_engine unit (CG-1)               |
-| 2 | `phase_scope` blocks Desktop changes during CG-0                                | rule_engine unit (CG-1)               |
-| 3 | `security` flags MCP bound to `0.0.0.0`                                         | rule_engine unit (CG-1)               |
-| 4 | `forbidden_claim` flags "tests pass" without a `tests/` file in `changed_files` | rule_engine + diff parser (CG-1)      |
-| 5 | `benchmark_mismatch` flags "80% savings" vs the 17.4% in `docs/benchmarks.md`   | retrieval_check integration (CG-2)    |
-| 6 | `memory_conflict` flags a claim contradicting a stored memory                   | retrieval_check integration (CG-2)    |
-| 7 | `secret_storage` blocks `OPENAI_API_KEY=sk-...` as a memory                     | reuses `services/security/secrets.py` (CG-1) |
-| 8 | `combine()` dedupes overlapping findings from rule + retrieval layers           | combine unit (CG-2)                   |
-| 9 | `POST /v1/alignment/check` returns a valid `AlignmentReport` schema             | API integration (CG-2)                |
-| 10 | `llm_judge` falls back gracefully when no provider is configured                | llm_judge unit (CG-5)                 |
-| 11 | Dashboard "Run alignment check" round-trips via the API                         | Playwright e2e (CG-3)                 |
-| 12 | `n0tune align check --file ...` matches the API result                          | CLI vitest (CG-4)                     |
-| 13 | `n0tune_alignment_check` MCP tool round-trips                                   | mcp-server smoke (CG-5)               |
-| 14 | CG-6 dogfooding pass: eight fixtures produce expected verdicts                  | release smoke (CG-6)                  |
+| #   | Test                                                                            | Layer                                        |
+| --- | ------------------------------------------------------------------------------- | -------------------------------------------- |
+| 1   | `terminology` rule catches "fine-tunes GPT" / "trains Claude"                   | rule_engine unit (CG-1)                      |
+| 2   | `phase_scope` blocks Desktop changes during CG-0                                | rule_engine unit (CG-1)                      |
+| 3   | `security` flags MCP bound to `0.0.0.0`                                         | rule_engine unit (CG-1)                      |
+| 4   | `forbidden_claim` flags "tests pass" without a `tests/` file in `changed_files` | rule_engine + diff parser (CG-1)             |
+| 5   | `benchmark_mismatch` flags "80% savings" vs the 17.4% in `docs/benchmarks.md`   | retrieval_check integration (CG-2)           |
+| 6   | `memory_conflict` flags a claim contradicting a stored memory                   | retrieval_check integration (CG-2)           |
+| 7   | `secret_storage` blocks `OPENAI_API_KEY=sk-...` as a memory                     | reuses `services/security/secrets.py` (CG-1) |
+| 8   | `combine()` dedupes overlapping findings from rule + retrieval layers           | combine unit (CG-2)                          |
+| 9   | `POST /v1/alignment/check` returns a valid `AlignmentReport` schema             | API integration (CG-2)                       |
+| 10  | `llm_judge` falls back gracefully when no provider is configured                | llm_judge unit (CG-5)                        |
+| 11  | Dashboard "Run alignment check" round-trips via the API                         | Playwright e2e (CG-3)                        |
+| 12  | `n0tune align check --file ...` matches the API result                          | CLI vitest (CG-4)                            |
+| 13  | `n0tune_alignment_check` MCP tool round-trips                                   | mcp-server smoke (CG-5)                      |
+| 14  | CG-6 dogfooding pass: eight fixtures produce expected verdicts                  | release smoke (CG-6)                         |
 
 The CG-6 fixtures themselves live in
 [`docs/dogfooding-alignment.md`](dogfooding-alignment.md) and are the

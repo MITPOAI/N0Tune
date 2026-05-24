@@ -1,5 +1,27 @@
 # API
 
+## Project Context
+
+Project context endpoints:
+
+```http
+POST /v1/projects/detect
+GET /v1/projects/{project_id}
+GET /v1/projects/{project_id}/context
+POST /v1/projects/{project_id}/memories
+GET /v1/projects/{project_id}/memories
+POST /v1/projects/{project_id}/sessions
+GET /v1/projects/{project_id}/sessions
+PATCH /v1/sessions/{session_id}
+POST /v1/projects/{project_id}/handoffs
+GET /v1/projects/{project_id}/handoffs
+GET /v1/handoffs/{handoff_id}
+POST /v1/handoffs/{handoff_id}/continue-prompt
+DELETE /v1/handoffs/{handoff_id}
+```
+
+These routes power the CLI and MCP cross-tool continuation flow.
+
 Base URL:
 
 ```text

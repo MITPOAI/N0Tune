@@ -1,5 +1,14 @@
 # Product direction
 
+Current headline:
+
+**Keep context across Claude, Codex, Cursor, and every AI tool.**
+
+N0Tune is an open-source shared context layer for AI tools. The project
+folder is the identity: same project, same memory, any AI tool. The
+context-tuning system remains true, but the product now leads with
+cross-tool project continuity instead of token savings or generic memory.
+
 N0Tune is a **context-tuning system**: it gives any AI model your personal
 context — memories, persona, indexed files — *without* fine-tuning the model.
 Same model, same question, personal answer. This page captures the framing

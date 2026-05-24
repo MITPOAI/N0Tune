@@ -10,7 +10,7 @@ from n0tune_core.compiler import (
     estimate_naive_tokens,
 )
 from n0tune_core.tokens import estimate_tokens
-from sqlalchemy import or_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -106,16 +106,24 @@ def compile_context(
     settings = get_settings()
     lexical_weight = max(0.0, min(1.0, settings.hybrid_lexical_weight))
 
-    shared_scopes = ("global", "app", "org", "team", "project")
+    shared_scopes = ("global", "app", "org", "team")
+    if request.project_id:
+        memory_scope_filter = or_(
+            Memory.user_id == request.user_id,
+            Memory.project_id == request.project_id,
+            and_(Memory.project_id.is_(None), Memory.scope.in_(shared_scopes)),
+        )
+    else:
+        memory_scope_filter = or_(
+            Memory.user_id == request.user_id,
+            and_(Memory.project_id.is_(None), Memory.scope.in_(shared_scopes)),
+        )
     memory_candidates = [
         memory
         for memory in session.scalars(
             select(Memory).where(
                 Memory.app_id == request.app_id,
-                or_(
-                    Memory.user_id == request.user_id,
-                    Memory.scope.in_(shared_scopes),
-                ),
+                memory_scope_filter,
             )
         )
         if _is_active_memory(memory, now)

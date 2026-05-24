@@ -13,6 +13,10 @@ import { HomeRoom } from "./components/rooms/HomeRoom";
 import { LibraryRoom } from "./components/rooms/LibraryRoom";
 import { RoomShell } from "./components/rooms/RoomShell";
 import { WireRoom } from "./components/rooms/WireRoom";
+import {
+  onUpdateAvailableEvent,
+  type UpdateAvailableEvent,
+} from "./tauri-bridge";
 import type { ActivityEvent } from "./components/home/ActivityFeed";
 import type {
   BackendStats,
@@ -58,6 +62,8 @@ export function App() {
   const [lastTrace, setLastTrace] = useState<ContextTrace | null>(null);
   const [room, setRoom] = useState<RoomKey>("home");
   const [notice, setNotice] = useState<string | null>(null);
+  const [updateAvailable, setUpdateAvailable] =
+    useState<UpdateAvailableEvent | null>(null);
   const [stats, setStats] = useState<BackendStats>(INITIAL_STATS);
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
 
@@ -81,6 +87,19 @@ export function App() {
       setShowOnboarding(providerConfig === null);
     })();
   }, [backend]);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void onUpdateAvailableEvent((event) => {
+      setUpdateAvailable(event);
+      setNotice(`N0Tune ${event.latest_version} is available.`);
+    }).then((cleanup) => {
+      unlisten = cleanup;
+    });
+    return () => {
+      unlisten?.();
+    };
+  }, []);
 
   // Auto-dismiss the notice after a few seconds so it doesn't follow
   // the user across rooms. Clicking "dismiss" still works for immediate
@@ -262,6 +281,7 @@ export function App() {
         stats={stats}
         memoryCount={memories.length}
         providerLabel={stats.lastProvider ?? provider?.label ?? null}
+        updateAvailable={updateAvailable}
       />
 
       <QuickRemember onSave={handleSaveMemory} />

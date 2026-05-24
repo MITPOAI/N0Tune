@@ -17,8 +17,10 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { readFile, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { createHash } from "node:crypto";
+import { existsSync } from "node:fs";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import process from "node:process";
 
@@ -31,8 +33,23 @@ Commands:
                                (used by the Gemini CLI adapter; works with any tool that
                                accepts a system prompt from stdin/file).
 
+  project detect                Detect/register the current project folder.
+  project init                  Write .n0tune/project.json and ignore local config.
+  project status                Show project context summary.
+
+  session start --tool <name>   Start a tracked AI-tool session for this project.
+  session summarize             Update a session summary with --session-id.
+  session list                  List sessions for this project.
+
+  handoff create --source <tool>
+                               Create a Handoff Capsule for this project.
+  handoff latest                Print the latest Handoff Capsule.
+  handoff continue              Print a continuation prompt from the latest capsule.
+
   memory list                  List memories for a user.
   memory add <text>            Save a memory for a user.
+  memory add --project <text>  Save a project-scoped memory for this folder.
+  memory search --project <q>  Search project-scoped memory for this folder.
   memory delete <id>           Soft-delete a memory.
   memory export                Dump memories to JSON.
   memory consolidate           Cluster + collapse similar memories. Use --dry-run
@@ -48,6 +65,8 @@ Commands:
                                (skips duplicates by exact text match).
 
   files sync <folder>          Walk Markdown files and POST them to the Gateway.
+  context preview --project <q>
+                               Preview project context without calling a model.
 
   mcp install                  Print Claude Desktop / Cursor MCP config snippets.
   mcp sync                     Copy <repo>/.claude/mcp.json into every git worktree
@@ -63,8 +82,19 @@ Global options:
   --api-key <key>              Gateway API key. Default $N0TUNE_API_KEY.
   --app-id <id>                Gateway app id.   Default 'demo'.
   --user-id <id>               User id where applicable. Default 'cli'.
+  --cwd <path>                 Project folder. Default current working directory.
+  --tool <name>                Tool name for project/session commands.
+  --source <tool>              Source tool for handoff create.
+  --target <tool>              Target tool for handoff continue.
+  --title <text>               Title for sessions or handoffs.
+  --goal <text>                Goal for sessions or handoffs.
+  --model <name>               Optional model name for session tracking.
+  --session-id <id>            Session id for summarize/handoff linkage.
+  --type <type>                Memory type for memory add.
   --out <file>                 Write output to a file instead of stdout.
   --dry-run                    Preview the action without writing (memory consolidate).
+  --project                    Use the current project scope where supported.
+  --copy                       Copy continuation prompt to clipboard when supported.
   -h, --help                   Show this help.
 `;
 
@@ -74,8 +104,19 @@ function parseFlags(args) {
     apiKey: process.env.N0TUNE_API_KEY ?? "replace-with-local-development-key",
     appId: process.env.N0TUNE_APP_ID ?? "demo",
     userId: process.env.N0TUNE_USER_ID ?? "cli",
+    cwd: process.cwd(),
+    toolName: null,
+    sourceTool: null,
+    targetTool: null,
+    title: null,
+    goal: null,
+    model: null,
+    sessionId: null,
+    type: null,
     out: null,
     dryRun: false,
+    project: false,
+    copy: false,
     help: false,
   };
   const positional = [];
@@ -94,11 +135,44 @@ function parseFlags(args) {
       case "--user-id":
         flags.userId = args[++i];
         break;
+      case "--cwd":
+        flags.cwd = args[++i];
+        break;
+      case "--tool":
+        flags.toolName = args[++i];
+        break;
+      case "--source":
+        flags.sourceTool = args[++i];
+        break;
+      case "--target":
+        flags.targetTool = args[++i];
+        break;
+      case "--title":
+        flags.title = args[++i];
+        break;
+      case "--goal":
+        flags.goal = args[++i];
+        break;
+      case "--model":
+        flags.model = args[++i];
+        break;
+      case "--session-id":
+        flags.sessionId = args[++i];
+        break;
+      case "--type":
+        flags.type = args[++i];
+        break;
       case "--out":
         flags.out = args[++i];
         break;
       case "--dry-run":
         flags.dryRun = true;
+        break;
+      case "--project":
+        flags.project = true;
+        break;
+      case "--copy":
+        flags.copy = true;
         break;
       case "-h":
       case "--help":
@@ -134,6 +208,108 @@ async function gatewayRequest(method, path, { flags, body }) {
     throw new Error(`HTTP ${response.status} on ${path}: ${detail}`);
   }
   return parsed;
+}
+
+async function detectCurrentProject(flags, toolName = flags.toolName ?? "cli") {
+  return await gatewayRequest("POST", "/v1/projects/detect", {
+    flags,
+    body: {
+      app_id: flags.appId,
+      cwd: flags.cwd,
+      tool_name: toolName,
+    },
+  });
+}
+
+function encodeQuery(params) {
+  return new URLSearchParams(params).toString();
+}
+
+function printJson(value) {
+  console.log(JSON.stringify(value, null, 2));
+}
+
+function parseListText(value) {
+  return String(value ?? "")
+    .split(/\r?\n|;/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+async function copyToClipboard(text) {
+  const platform = process.platform;
+  try {
+    if (platform === "win32") {
+      execFileSync("clip.exe", [], { input: text });
+      return true;
+    }
+    if (platform === "darwin") {
+      execFileSync("pbcopy", [], { input: text });
+      return true;
+    }
+    try {
+      execFileSync("wl-copy", [], { input: text });
+      return true;
+    } catch {
+      execFileSync("xclip", ["-selection", "clipboard"], { input: text });
+      return true;
+    }
+  } catch {
+    return false;
+  }
+}
+
+async function detectLocalProject(flags) {
+  let root;
+  try {
+    root = execFileSync("git", ["-C", flags.cwd, "rev-parse", "--show-toplevel"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    root = findMarkerRoot(resolve(flags.cwd));
+  }
+  const name = await localProjectName(root);
+  const rootHash = createHash("sha256")
+    .update(resolve(root).replaceAll("\\", "/").toLowerCase())
+    .digest("hex");
+  return {
+    project_id: `proj_${rootHash.slice(0, 24)}`,
+    project_name: name,
+    detected_root: root,
+    status: "local-only",
+    fingerprint: {
+      root_path_hash: rootHash,
+      workspace_name: name,
+      has_project_config: existsSync(join(root, ".n0tune", "project.json")),
+    },
+  };
+}
+
+function findMarkerRoot(start) {
+  const markers = [".n0tune", ".git", "package.json", "pyproject.toml", "Cargo.toml", "go.mod"];
+  let current = resolve(start);
+  while (true) {
+    if (markers.some((marker) => existsSync(join(current, marker)))) {
+      return current;
+    }
+    const parent = dirname(current);
+    if (parent === current) return resolve(start);
+    current = parent;
+  }
+}
+
+async function localProjectName(root) {
+  const packagePath = join(root, "package.json");
+  if (existsSync(packagePath)) {
+    try {
+      const parsed = JSON.parse(await readFile(packagePath, "utf-8"));
+      if (parsed?.name) return String(parsed.name);
+    } catch {
+      // Fall through to folder name.
+    }
+  }
+  return root.split(/[\\/]/).filter(Boolean).at(-1) ?? "project";
 }
 
 /**
@@ -274,6 +450,256 @@ async function runDemo({ flags }) {
   return 0;
 }
 
+async function runProject(positional, { flags }) {
+  const [verb] = positional;
+  switch (verb) {
+    case "detect": {
+      const project = await detectCurrentProject(flags, flags.toolName ?? "cli");
+      printJson(project);
+      return 0;
+    }
+    case "init": {
+      let project;
+      try {
+        project = await detectCurrentProject(flags, flags.toolName ?? "cli");
+      } catch (error) {
+        console.error(`project init: gateway unavailable, writing local-only config (${error.message})`);
+        project = await detectLocalProject(flags);
+      }
+      const root = project.detected_root;
+      const n0tuneDir = join(root, ".n0tune");
+      await mkdir(n0tuneDir, { recursive: true });
+      const config = {
+        project_id: project.project_id,
+        name: project.project_name,
+        root: ".",
+        created_at: new Date().toISOString(),
+        mode: project.status === "local-only" ? "local" : "gateway",
+        memory_policy: "review",
+        tools: {
+          claude: true,
+          codex: true,
+          cursor: true,
+        },
+      };
+      await writeFile(join(n0tuneDir, "project.json"), JSON.stringify(config, null, 2) + "\n", "utf-8");
+      await writeFile(
+        join(n0tuneDir, "project.example.json"),
+        JSON.stringify({ ...config, project_id: "proj_example" }, null, 2) + "\n",
+        "utf-8",
+      );
+      await ensureN0TuneIgnored(root);
+      printJson({ ok: true, path: join(n0tuneDir, "project.json"), project });
+      return 0;
+    }
+    case "status": {
+      const detected = await detectCurrentProject(flags, flags.toolName ?? "cli");
+      const context = await gatewayRequest(
+        "GET",
+        `/v1/projects/${encodeURIComponent(detected.project_id)}/context?${encodeQuery({
+          app_id: flags.appId,
+        })}`,
+        { flags },
+      );
+      printJson({ detected, context });
+      return 0;
+    }
+    default:
+      console.error("project detect | project init | project status");
+      return 1;
+  }
+}
+
+async function ensureN0TuneIgnored(root) {
+  const gitignore = join(root, ".gitignore");
+  let existing = "";
+  try {
+    existing = await readFile(gitignore, "utf-8");
+  } catch {
+    existing = "";
+  }
+  if (existing.includes(".n0tune/") || existing.includes(".n0tune/*")) return;
+  const block = [
+    "",
+    "# N0Tune local project context",
+    ".n0tune/*",
+    "!.n0tune/",
+    "!.n0tune/project.example.json",
+    "",
+  ].join("\n");
+  await writeFile(gitignore, existing.replace(/\s*$/, "\n") + block, "utf-8");
+}
+
+async function runSession(positional, { flags }) {
+  const [verb, ...rest] = positional;
+  switch (verb) {
+    case "start": {
+      const toolName = flags.toolName;
+      if (!toolName) {
+        console.error("session start: missing --tool <name>");
+        return 1;
+      }
+      const detected = await detectCurrentProject(flags, toolName);
+      const goal = (flags.goal ?? rest.join(" ").trim()) || null;
+      const created = await gatewayRequest(
+        "POST",
+        `/v1/projects/${encodeURIComponent(detected.project_id)}/sessions`,
+        {
+          flags,
+          body: {
+            app_id: flags.appId,
+            tool_name: toolName,
+            title: flags.title,
+            goal,
+            model: flags.model,
+          },
+        },
+      );
+      printJson(created);
+      return 0;
+    }
+    case "summarize": {
+      if (!flags.sessionId) {
+        console.error("session summarize: missing --session-id <id>");
+        return 1;
+      }
+      const summary = rest.join(" ").trim();
+      if (!summary) {
+        console.error("session summarize: missing summary text");
+        return 1;
+      }
+      const updated = await gatewayRequest(
+        "PATCH",
+        `/v1/sessions/${encodeURIComponent(flags.sessionId)}`,
+        {
+          flags,
+          body: {
+            app_id: flags.appId,
+            status: "summarized",
+            summary,
+            next_steps: parseListText(flags.goal),
+          },
+        },
+      );
+      printJson(updated);
+      return 0;
+    }
+    case "list": {
+      const detected = await detectCurrentProject(flags, flags.toolName ?? "cli");
+      const sessions = await gatewayRequest(
+        "GET",
+        `/v1/projects/${encodeURIComponent(detected.project_id)}/sessions?${encodeQuery({
+          app_id: flags.appId,
+        })}`,
+        { flags },
+      );
+      printJson(sessions);
+      return 0;
+    }
+    default:
+      console.error("session start --tool <name> | session summarize --session-id <id> | session list");
+      return 1;
+  }
+}
+
+async function runHandoff(positional, { flags }) {
+  const [verb, ...rest] = positional;
+  switch (verb) {
+    case "create": {
+      const sourceTool = flags.sourceTool ?? flags.toolName;
+      if (!sourceTool) {
+        console.error("handoff create: missing --source <tool>");
+        return 1;
+      }
+      const detected = await detectCurrentProject(flags, sourceTool);
+      const currentState = rest.join(" ").trim();
+      if (!currentState) {
+        console.error("handoff create: missing current-state text");
+        return 1;
+      }
+      const created = await gatewayRequest(
+        "POST",
+        `/v1/projects/${encodeURIComponent(detected.project_id)}/handoffs`,
+        {
+          flags,
+          body: {
+            app_id: flags.appId,
+            source_tool: sourceTool,
+            target_tool: flags.targetTool,
+            session_id: flags.sessionId,
+            title: flags.title,
+            goal: flags.goal,
+            current_state: currentState,
+            next_steps: parseListText(flags.goal),
+          },
+        },
+      );
+      printJson(created);
+      return 0;
+    }
+    case "latest": {
+      const detected = await detectCurrentProject(flags, flags.toolName ?? "cli");
+      const latest = await latestHandoff(flags, detected.project_id);
+      if (!latest) {
+        console.log("No Handoff Capsule found for this project.");
+        return 0;
+      }
+      if (flags.copy) {
+        return await printContinuationPrompt(flags, latest.id);
+      }
+      printJson(latest);
+      return 0;
+    }
+    case "continue": {
+      const handoffId = rest[0]?.startsWith("hof_") ? rest[0] : null;
+      if (handoffId) {
+        return await printContinuationPrompt(flags, handoffId);
+      }
+      const detected = await detectCurrentProject(flags, flags.toolName ?? "cli");
+      const latest = await latestHandoff(flags, detected.project_id);
+      if (!latest) {
+        console.error("handoff continue: no Handoff Capsule found for this project");
+        return 1;
+      }
+      return await printContinuationPrompt(flags, latest.id);
+    }
+    default:
+      console.error("handoff create --source <tool> | handoff latest | handoff continue");
+      return 1;
+  }
+}
+
+async function latestHandoff(flags, projectId) {
+  const handoffs = await gatewayRequest(
+    "GET",
+    `/v1/projects/${encodeURIComponent(projectId)}/handoffs?${encodeQuery({
+      app_id: flags.appId,
+      limit: "1",
+    })}`,
+    { flags },
+  );
+  return Array.isArray(handoffs) && handoffs.length ? handoffs[0] : null;
+}
+
+async function printContinuationPrompt(flags, handoffId) {
+  const continued = await gatewayRequest(
+    "POST",
+    `/v1/handoffs/${encodeURIComponent(handoffId)}/continue-prompt`,
+    {
+      flags,
+      body: { app_id: flags.appId, target_tool: flags.targetTool },
+    },
+  );
+  const prompt = String(continued.continuation_prompt ?? "");
+  if (flags.copy) {
+    const copied = await copyToClipboard(prompt);
+    console.error(copied ? "copied continuation prompt to clipboard" : "clipboard copy failed");
+  }
+  process.stdout.write(prompt);
+  if (!prompt.endsWith("\n")) process.stdout.write("\n");
+  return 0;
+}
+
 async function runMemory(positional, { flags }) {
   const [verb, ...rest] = positional;
   switch (verb) {
@@ -294,17 +720,67 @@ async function runMemory(positional, { flags }) {
         console.error("memory add: missing text");
         return 1;
       }
+      if (flags.project) {
+        const detected = await detectCurrentProject(flags, flags.toolName ?? "cli");
+        const created = await gatewayRequest(
+          "POST",
+          `/v1/projects/${encodeURIComponent(detected.project_id)}/memories`,
+          {
+            flags,
+            body: {
+              app_id: flags.appId,
+              user_id: flags.userId,
+              type: flags.type ?? "project",
+              text,
+              confidence: 0.85,
+            },
+          },
+        );
+        printJson(created);
+        return 0;
+      }
       const created = await gatewayRequest("POST", "/v1/memories", {
         flags,
         body: {
           app_id: flags.appId,
           user_id: flags.userId,
-          type: "fact",
+          type: flags.type ?? "fact",
           text,
           confidence: 0.85,
         },
       });
       console.log(JSON.stringify(created, null, 2));
+      return 0;
+    }
+    case "search": {
+      const query = rest.join(" ").trim();
+      if (!query) {
+        console.error("memory search: missing query");
+        return 1;
+      }
+      if (flags.project) {
+        const detected = await detectCurrentProject(flags, flags.toolName ?? "cli");
+        const memories = await gatewayRequest(
+          "GET",
+          `/v1/projects/${encodeURIComponent(detected.project_id)}/memories?${encodeQuery({
+            app_id: flags.appId,
+            q: query,
+          })}`,
+          { flags },
+        );
+        printJson(memories);
+        return 0;
+      }
+      const memories = await gatewayRequest(
+        "GET",
+        `/v1/memories?${encodeQuery({
+          app_id: flags.appId,
+          user_id: flags.userId,
+          q: query,
+        })}`,
+        { flags },
+      );
+      printJson(memories);
       return 0;
     }
     case "delete": {
@@ -528,6 +1004,33 @@ async function runCompile(positional, { flags }) {
   return 0;
 }
 
+async function runContext(positional, { flags }) {
+  const [verb, ...rest] = positional;
+  if (verb !== "preview") {
+    console.error("context preview --project <query>");
+    return 1;
+  }
+  const query = rest.join(" ").trim();
+  if (!query) {
+    console.error("context preview: missing query");
+    return 1;
+  }
+  if (!flags.project) {
+    console.error("context preview currently requires --project. Use `n0tune compile` for user context.");
+    return 1;
+  }
+  const detected = await detectCurrentProject(flags, flags.toolName ?? "cli");
+  const context = await gatewayRequest(
+    "GET",
+    `/v1/projects/${encodeURIComponent(detected.project_id)}/context?${encodeQuery({
+      app_id: flags.appId,
+      query,
+    })}`,
+    { flags },
+  );
+  printJson(context);
+  return 0;
+}
 
 async function runFiles(positional, { flags }) {
   const [verb, folder] = positional;
@@ -613,10 +1116,18 @@ export async function runCli(argv) {
       return runDemo({ flags });
     case "compile":
       return runCompile(rest, { flags });
+    case "project":
+      return runProject(rest, { flags });
+    case "session":
+      return runSession(rest, { flags });
+    case "handoff":
+      return runHandoff(rest, { flags });
     case "memory":
       return runMemory(rest, { flags });
     case "persona":
       return runPersona(rest, { flags });
+    case "context":
+      return runContext(rest, { flags });
     case "files":
       return runFiles(rest, { flags });
     case "mcp":

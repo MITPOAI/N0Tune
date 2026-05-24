@@ -15,6 +15,14 @@ describe("N0Tune MCP server", () => {
       "n0tune_forget_memory",
       "n0tune_get_persona",
       "n0tune_alignment_check",
+      "n0tune_project_detect",
+      "n0tune_get_project_context",
+      "n0tune_create_handoff_capsule",
+      "n0tune_get_latest_handoff",
+      "n0tune_list_handoffs",
+      "n0tune_continue_from_handoff",
+      "n0tune_save_project_memory",
+      "n0tune_search_project_memory",
     ]);
   });
 });

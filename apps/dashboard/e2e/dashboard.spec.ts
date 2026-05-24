@@ -17,13 +17,12 @@ test.describe.serial("dashboard end-to-end flows", () => {
       timeout: 30_000,
     });
     // Switch the global user_id field on the header so each test run is isolated.
-    const userIdInput = page.locator('label:has-text("user_id") input');
-    await userIdInput.fill(uniqueUser);
+    await page.getByLabel("User ID").fill(uniqueUser);
     await page.getByRole("button", { name: /^refresh$/i }).click();
   });
 
   test("create a memory and see it in the list", async ({ page }) => {
-    await page.getByRole("button", { name: "Memories" }).click();
+    await page.getByRole("button", { name: "Memory Library" }).click();
     await page.locator('form input[name="type"]').fill("preference");
     await page
       .locator('form textarea[name="text"]')
@@ -38,7 +37,7 @@ test.describe.serial("dashboard end-to-end flows", () => {
         resp.url().includes("/v1/memories") &&
         resp.request().method() === "POST",
     );
-    await page.getByRole("button", { name: /^save$/i }).click();
+    await page.getByRole("button", { name: /save memory/i }).click();
     const postResponse = await postPromise;
     expect(
       postResponse.ok(),
@@ -46,7 +45,7 @@ test.describe.serial("dashboard end-to-end flows", () => {
     ).toBeTruthy();
 
     await expect(
-      page.getByText("E2E user prefers short architecture answers."),
+      page.getByText("E2E user prefers short architecture answers.").first(),
     ).toBeVisible();
 
     await page.getByRole("button", { name: "Delete" }).click();
@@ -56,21 +55,21 @@ test.describe.serial("dashboard end-to-end flows", () => {
   });
 
   test("update the style profile", async ({ page }) => {
-    await page.getByRole("button", { name: "Style" }).click();
+    await page.getByRole("button", { name: "Memory Library" }).click();
     await page.locator('form input[name="tone"]').fill("crisp");
     await page.locator('form input[name="depth"]').fill("high");
     await page
       .locator('form input[name="format"]')
       .fill("short bullets + 1 diagram");
     await page.locator('form input[name="avoid"]').fill("hype, fluff");
-    await page.getByRole("button", { name: /update profile/i }).click();
+    await page.getByRole("button", { name: /update style profile/i }).click();
 
     await page.getByRole("button", { name: /^refresh$/i }).click();
     await expect(page.locator('form input[name="tone"]')).toHaveValue("crisp");
   });
 
   test("index a document and preview compiled context", async ({ page }) => {
-    await page.getByRole("button", { name: "Documents" }).click();
+    await page.getByRole("button", { name: "Files" }).click();
     await page
       .locator('form input[name="title"]')
       .fill("E2E architecture note");
@@ -80,11 +79,13 @@ test.describe.serial("dashboard end-to-end flows", () => {
       .fill(
         "N0Tune is the context compiler. The compiler decides which memories and chunks to include.",
       );
-    await page.getByRole("button", { name: /index document/i }).click();
+    await page
+      .getByRole("button", { name: "Index document", exact: true })
+      .click();
     await expect(page.getByText("E2E architecture note").first()).toBeVisible();
 
-    await page.getByRole("button", { name: "Context", exact: true }).click();
-    const messageBox = page.locator("form textarea");
+    await page.getByRole("button", { name: "Command Center" }).click();
+    const messageBox = page.getByLabel("Context preview message");
     await messageBox.fill("Explain what the N0Tune context compiler does.");
     await page.getByRole("button", { name: /compile context/i }).click();
 
@@ -116,9 +117,7 @@ test.describe.serial("dashboard end-to-end flows", () => {
     await expect(
       page.getByText("short technical bullets").first(),
     ).toBeVisible();
-    await expect(
-      page.getByText("analogy-rich walkthroughs").first(),
-    ).toBeVisible();
+    await expect(page.getByText("beginner explanations").first()).toBeVisible();
     await expect(page.getByText("Selected memories").first()).toBeVisible();
     await expect(page.getByText("Trace: selected").first()).toBeVisible();
   });
@@ -136,10 +135,6 @@ test.describe.serial("dashboard end-to-end flows", () => {
     await page.getByRole("button", { name: /clear cache/i }).click();
     await page.getByRole("button", { name: /^refresh$/i }).click();
 
-    await page.getByRole("button", { name: "Overview" }).click();
-    const cacheEntries = page
-      .locator("p", { hasText: /^cache entries$/i })
-      .locator("xpath=following-sibling::p[1]");
-    await expect(cacheEntries).toHaveText("0");
+    await expect(page.getByText("Cache is empty")).toBeVisible();
   });
 });

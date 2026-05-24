@@ -1,5 +1,10 @@
 # MCP server
 
+Project-context MCP tools are documented in
+[`mcp-project-context.md`](mcp-project-context.md). They add project
+detection, project memory, Handoff Capsules, and continuation prompts on top
+of the original memory/style/docs tools.
+
 N0Tune ships a stdio MCP server in
 [`integrations/mcp-server`](../integrations/mcp-server/). Run it locally and
 any MCP-compatible client — Claude Desktop, Claude Code, Cursor — can read

@@ -38,6 +38,26 @@ Every memory, style profile, document, cache entry, and context run is scoped by
 
 Tests cover cross-app memory isolation.
 
+## Project Context Safety
+
+Project context adds a second isolation boundary: `project_id`.
+
+Implemented controls:
+
+- project rows store root and Git remote hashes, not API keys or secrets
+- `.n0tune/project.json` is local config and must not contain secrets
+- `.n0tune/*` is ignored by default; only `.n0tune/project.example.json` is allowlisted
+- project memories are linked by `project_id`
+- project-memory search only queries one project
+- the context compiler excludes project-bound memories unless the request
+  supplies the matching `project_id`
+- MCP defaults to local Gateway URLs and refuses remote URLs unless
+  `N0TUNE_MCP_ALLOW_REMOTE=1` is explicitly set
+- MCP exposes no shell execution tools
+
+Tests cover same-folder project detection, different-folder separation,
+project memory isolation, and handoff continuation prompt contents.
+
 ## Secret scanning in CI
 
 The repo runs [Gitleaks](https://github.com/gitleaks/gitleaks) on every push

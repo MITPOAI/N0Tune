@@ -14,6 +14,12 @@ export interface RuntimeInfo {
   tauri: string;
 }
 
+export interface UpdateAvailableEvent {
+  current_version: string;
+  latest_version: string;
+  release_url: string;
+}
+
 export function isTauri(): boolean {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 }
@@ -69,6 +75,24 @@ export async function onQuickRememberEvent(handler: () => void): Promise<() => v
   try {
     const mod = await import(/* @vite-ignore */ "@tauri-apps/api/event");
     const unlisten = await mod.listen("n0tune://quick-remember", () => handler());
+    return unlisten;
+  } catch {
+    return () => undefined;
+  }
+}
+
+export async function onUpdateAvailableEvent(
+  handler: (event: UpdateAvailableEvent) => void,
+): Promise<() => void> {
+  if (!isTauri()) {
+    return () => undefined;
+  }
+  try {
+    const mod = await import(/* @vite-ignore */ "@tauri-apps/api/event");
+    const unlisten = await mod.listen<UpdateAvailableEvent>(
+      "n0tune://update-available",
+      (event) => handler(event.payload),
+    );
     return unlisten;
   } catch {
     return () => undefined;

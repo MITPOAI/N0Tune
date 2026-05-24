@@ -98,6 +98,66 @@ describe("n0tune CLI", () => {
     expect(body.text).toBe("hello world");
   });
 
+  it("`project detect` registers the current cwd with the gateway", async () => {
+    mockFetch.mockImplementationOnce(() =>
+      jsonResponse({
+        project_id: "proj_123",
+        project_name: "demo",
+        detected_root: "C:/demo",
+        status: "created",
+      }),
+    );
+
+    const code = await runCli(["project", "detect", "--cwd", "C:/demo", "--tool", "codex"]);
+    expect(code).toBe(0);
+    const [url, init] = mockFetch.mock.calls[0];
+    expect(String(url)).toContain("/v1/projects/detect");
+    expect(init?.method).toBe("POST");
+    const body = JSON.parse(init?.body as string);
+    expect(body.cwd).toBe("C:/demo");
+    expect(body.tool_name).toBe("codex");
+  });
+
+  it("`memory add --project` writes a project-scoped memory", async () => {
+    mockFetch.mockImplementationOnce(() => jsonResponse({ project_id: "proj_123" }));
+    mockFetch.mockImplementationOnce(() =>
+      jsonResponse({ id: "mem_project", project_id: "proj_123", text: "Decision" }, 201),
+    );
+
+    const code = await runCli(["memory", "add", "--project", "--type", "decision", "Decision"]);
+    expect(code).toBe(0);
+    const [url, init] = mockFetch.mock.calls[1];
+    expect(String(url)).toContain("/v1/projects/proj_123/memories");
+    expect(init?.method).toBe("POST");
+    const body = JSON.parse(init?.body as string);
+    expect(body.type).toBe("decision");
+  });
+
+  it("`handoff continue` prints the latest continuation prompt", async () => {
+    mockFetch.mockImplementationOnce(() => jsonResponse({ project_id: "proj_123" }));
+    mockFetch.mockImplementationOnce(() => jsonResponse([{ id: "hof_123" }]));
+    mockFetch.mockImplementationOnce(() =>
+      jsonResponse({
+        handoff_id: "hof_123",
+        continuation_prompt: "Continue from Claude in Codex.",
+      }),
+    );
+
+    const writes: string[] = [];
+    const stdoutSpy = vi
+      .spyOn(process.stdout, "write")
+      .mockImplementation((chunk: string | Uint8Array) => {
+        writes.push(typeof chunk === "string" ? chunk : Buffer.from(chunk).toString("utf-8"));
+        return true;
+      });
+
+    const code = await runCli(["handoff", "continue", "--target", "codex"]);
+    stdoutSpy.mockRestore();
+    expect(code).toBe(0);
+    expect(writes.join("")).toContain("Continue from Claude in Codex.");
+    expect(String(mockFetch.mock.calls[2][0])).toContain("/v1/handoffs/hof_123/continue-prompt");
+  });
+
   it("`compile` prints the compiled_context to stdout", async () => {
     const compiledBody = "System: stub compiled context for tests\nUser message: Explain X.";
     mockFetch.mockImplementationOnce(() => jsonResponse({ compiled_context: compiledBody }));

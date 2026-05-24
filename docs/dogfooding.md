@@ -1,5 +1,11 @@
 # Dogfooding
 
+For cross-tool project continuity, also run
+[`dogfooding-cross-tool.md`](dogfooding-cross-tool.md). That scenario proves
+the main N0Tune story: Claude can create project memory and a Handoff
+Capsule, then Codex can open the same folder and continue from the shared
+context.
+
 We use N0Tune to build N0Tune. The dogfooding loop runs through the
 Gateway because that's the easiest end-to-end proving ground; the same
 behaviors are moving behind `packages/core` so Desktop can reuse them

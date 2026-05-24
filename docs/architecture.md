@@ -1,5 +1,37 @@
 # Architecture
 
+## Project Context Runtime
+
+The Gateway now has a project-context layer above the existing app/user
+memory model.
+
+New tables:
+
+- `projects`
+- `project_tools`
+- `sessions`
+- `handoff_capsules`
+
+Updated table:
+
+- `memories.project_id`
+- `memories.session_id`
+- `memories.handoff_id`
+
+Project detection lives in `apps/api/app/services/project_context.py`.
+Routes live in `apps/api/app/routes/projects.py`.
+
+Project context APIs are intentionally thin:
+
+- detect a folder
+- save/search project memory
+- track sessions
+- create/list/archive handoff capsules
+- generate continuation prompts
+
+The MCP server and CLI are clients of those routes. They do not keep their
+own project database.
+
 This page describes the current Gateway/server architecture and how it should evolve toward Desktop and Core.
 
 For product editions, see [editions.md](editions.md). For Desktop planning, see [desktop-architecture.md](desktop-architecture.md).

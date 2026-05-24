@@ -97,6 +97,15 @@ class Memory(Base):
     text: Mapped[str] = mapped_column(Text)
     confidence: Mapped[float] = mapped_column(Float)
     source_message_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    project_id: Mapped[str | None] = mapped_column(
+        String(64), ForeignKey("projects.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    session_id: Mapped[str | None] = mapped_column(
+        String(64), ForeignKey("sessions.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    handoff_id: Mapped[str | None] = mapped_column(
+        String(64), ForeignKey("handoff_capsules.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     embedding: Mapped[list[float] | None] = mapped_column(
         Vector(EMBEDDING_DIMENSIONS), nullable=True
     )
@@ -116,6 +125,98 @@ class Memory(Base):
     # set ``updated_at`` explicitly so cache freshness still detects edits.
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class Project(Base):
+    __tablename__ = "projects"
+    __table_args__ = (UniqueConstraint("app_id", "root_path_hash", name="uq_projects_app_root_hash"),)
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: new_id("proj"))
+    app_id: Mapped[str] = mapped_column(
+        String(128), ForeignKey("apps.id", ondelete="CASCADE"), index=True
+    )
+    name: Mapped[str] = mapped_column(String(255))
+    root_path_hash: Mapped[str] = mapped_column(String(64), index=True)
+    git_remote_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    fingerprint_json: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+    metadata_json: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=now_utc, onupdate=now_utc
+    )
+
+
+class ProjectTool(Base):
+    __tablename__ = "project_tools"
+    __table_args__ = (UniqueConstraint("project_id", "tool_name", name="uq_project_tools_project_tool"),)
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: new_id("ptl"))
+    project_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("projects.id", ondelete="CASCADE"), index=True
+    )
+    tool_name: Mapped[str] = mapped_column(String(64), index=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    metadata_json: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+
+
+class ProjectSession(Base):
+    __tablename__ = "sessions"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: new_id("ses"))
+    project_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("projects.id", ondelete="CASCADE"), index=True
+    )
+    tool_name: Mapped[str] = mapped_column(String(64), index=True)
+    tool_session_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    title: Mapped[str] = mapped_column(String(255))
+    goal: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(32), default="active", index=True)
+    model: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    context_tokens_estimated: Mapped[int] = mapped_column(Integer, default=0)
+    context_pressure: Mapped[str] = mapped_column(String(32), default="healthy")
+    files_touched_json: Mapped[list[str]] = mapped_column(JSON, default=list)
+    commands_run_json: Mapped[list[str]] = mapped_column(JSON, default=list)
+    memories_created_json: Mapped[list[str]] = mapped_column(JSON, default=list)
+    docs_used_json: Mapped[list[str]] = mapped_column(JSON, default=list)
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    next_steps_json: Mapped[list[str]] = mapped_column(JSON, default=list)
+    created_handoff_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=now_utc, onupdate=now_utc
+    )
+
+
+class HandoffCapsule(Base):
+    __tablename__ = "handoff_capsules"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: new_id("hof"))
+    project_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("projects.id", ondelete="CASCADE"), index=True
+    )
+    source_tool: Mapped[str] = mapped_column(String(64), index=True)
+    target_tool: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    title: Mapped[str] = mapped_column(String(255))
+    goal: Mapped[str | None] = mapped_column(Text, nullable=True)
+    current_state: Mapped[str] = mapped_column(Text)
+    decisions_json: Mapped[list[str]] = mapped_column(JSON, default=list)
+    files_changed_json: Mapped[list[str]] = mapped_column(JSON, default=list)
+    commands_run_json: Mapped[list[str]] = mapped_column(JSON, default=list)
+    errors_seen_json: Mapped[list[str]] = mapped_column(JSON, default=list)
+    tests_run_json: Mapped[list[str]] = mapped_column(JSON, default=list)
+    next_steps_json: Mapped[list[str]] = mapped_column(JSON, default=list)
+    open_questions_json: Mapped[list[str]] = mapped_column(JSON, default=list)
+    warnings_json: Mapped[list[str]] = mapped_column(JSON, default=list)
+    memory_refs_json: Mapped[list[str]] = mapped_column(JSON, default=list)
+    doc_refs_json: Mapped[list[str]] = mapped_column(JSON, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=now_utc, onupdate=now_utc
+    )
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class StyleProfile(Base):

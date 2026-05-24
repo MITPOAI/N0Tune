@@ -1,6 +1,30 @@
 # Roadmap
 
-N0Tune is pivoting from a backend-first memory gateway into an open-source Personal AI Runtime.
+## Cross-Tool Context Track
+
+N0Tune's current main story is shared project context:
+
+> Keep context across Claude, Codex, Cursor, and every AI tool.
+
+Phase CT-1 through CT-6 now have a working vertical slice:
+
+- product copy and docs lead with cross-tool project continuity
+- project detection API and CLI command
+- project-scoped memory
+- sessions table and API
+- Handoff Capsules table, API, continuation prompt, CLI, and MCP tools
+- dashboard surfaces for current project, sessions, and handoffs
+- dogfooding doc for Claude-to-Codex continuation
+
+Remaining CT work:
+
+- desktop-local project store and file watcher
+- automatic transcript/session capture from tool adapters
+- configurable context-pressure thresholds by model/provider
+- in-dashboard Handoff Capsule creation form
+- screenshots and release QA for the full dashboard flow
+
+N0Tune is pivoting from a backend-first memory gateway into an open-source shared context layer for AI tools.
 
 The existing server/API work is preserved as **N0Tune Gateway**. The public product direction becomes Desktop first, with Core, CLI, MCP, and Gateway supporting that experience.
 

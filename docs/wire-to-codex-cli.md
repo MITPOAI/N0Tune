@@ -1,5 +1,18 @@
 # Wire N0Tune to Codex CLI
 
+For cross-tool continuation, have Codex call:
+
+1. `n0tune_project_detect` with the current working directory.
+2. `n0tune_get_latest_handoff` for the returned project id.
+3. `n0tune_get_project_context` with the user's current task.
+4. `n0tune_continue_from_handoff` when a Handoff Capsule exists.
+
+CLI fallback:
+
+```bash
+n0tune handoff continue --target codex --copy
+```
+
 [Codex CLI](https://github.com/openai/codex) is OpenAI's terminal-native
 coding agent. It speaks MCP, so the wiring is the same shape as Claude
 Code / Cursor — just a different config file location.

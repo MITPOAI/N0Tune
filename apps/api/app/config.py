@@ -19,6 +19,17 @@ class Settings(BaseSettings):
         default_factory=lambda: [
             # Dashboard (Next.js dev + docker).
             "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:3001",
+            "http://127.0.0.1:3001",
+            "http://localhost:3002",
+            "http://127.0.0.1:3002",
+            "http://localhost:3003",
+            "http://127.0.0.1:3003",
+            "http://localhost:3004",
+            "http://127.0.0.1:3004",
+            "http://localhost:3005",
+            "http://127.0.0.1:3005",
             # Desktop dev (Vite). The Tauri renderer talks to the Gateway
             # from a different origin than the dashboard, so it needs its
             # own CORS allowance.

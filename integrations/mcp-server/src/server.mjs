@@ -152,6 +152,130 @@ export const toolDefinitions = [
       required: ["content"],
     },
   },
+  {
+    name: "n0tune_project_detect",
+    description: "Detect/register the current project folder for cross-tool context.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        app_id: { type: "string" },
+        cwd: { type: "string" },
+        tool_name: { type: "string" },
+      },
+      required: ["cwd"],
+    },
+  },
+  {
+    name: "n0tune_get_project_context",
+    description: "Get project-scoped memories, docs, handoffs, and current tasks.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        app_id: { type: "string" },
+        project_id: { type: "string" },
+        query: { type: "string" },
+      },
+      required: ["project_id"],
+    },
+  },
+  {
+    name: "n0tune_create_handoff_capsule",
+    description: "Create a project Handoff Capsule so another AI tool can continue.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        app_id: { type: "string" },
+        project_id: { type: "string" },
+        source_tool: { type: "string" },
+        target_tool: { type: "string" },
+        session_id: { type: "string" },
+        title: { type: "string" },
+        goal: { type: "string" },
+        current_state: { type: "string" },
+        decisions: { type: "array", items: { type: "string" } },
+        files_changed: { type: "array", items: { type: "string" } },
+        commands_run: { type: "array", items: { type: "string" } },
+        errors_seen: { type: "array", items: { type: "string" } },
+        tests_run: { type: "array", items: { type: "string" } },
+        next_steps: { type: "array", items: { type: "string" } },
+        open_questions: { type: "array", items: { type: "string" } },
+        warnings: { type: "array", items: { type: "string" } },
+        memory_refs: { type: "array", items: { type: "string" } },
+        doc_refs: { type: "array", items: { type: "string" } },
+      },
+      required: ["project_id", "source_tool", "current_state"],
+    },
+  },
+  {
+    name: "n0tune_get_latest_handoff",
+    description: "Get the newest Handoff Capsule for a project.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        app_id: { type: "string" },
+        project_id: { type: "string" },
+        source_tool: { type: "string" },
+      },
+      required: ["project_id"],
+    },
+  },
+  {
+    name: "n0tune_list_handoffs",
+    description: "List project Handoff Capsules.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        app_id: { type: "string" },
+        project_id: { type: "string" },
+        source_tool: { type: "string" },
+        limit: { type: "number" },
+      },
+      required: ["project_id"],
+    },
+  },
+  {
+    name: "n0tune_continue_from_handoff",
+    description: "Generate a continuation prompt from a Handoff Capsule.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        app_id: { type: "string" },
+        handoff_id: { type: "string" },
+        target_tool: { type: "string" },
+      },
+      required: ["handoff_id"],
+    },
+  },
+  {
+    name: "n0tune_save_project_memory",
+    description: "Save a project-scoped memory for the detected project.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        app_id: { type: "string" },
+        project_id: { type: "string" },
+        user_id: { type: "string" },
+        memory: { type: "string" },
+        type: { type: "string" },
+        confidence: { type: "number" },
+      },
+      required: ["project_id", "memory"],
+    },
+  },
+  {
+    name: "n0tune_search_project_memory",
+    description: "Search memories scoped to one project; does not search all projects.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        app_id: { type: "string" },
+        project_id: { type: "string" },
+        query: { type: "string" },
+        limit: { type: "number" },
+      },
+      required: ["project_id", "query"],
+    },
+  },
 ];
 
 const apiBaseUrl = process.env.N0TUNE_API_BASE_URL ?? "http://localhost:8000";
@@ -238,12 +362,98 @@ export async function callTool(name, args = {}) {
           strict: Boolean(args.strict),
         },
       });
+    case "n0tune_project_detect":
+      return api("/v1/projects/detect", {
+        method: "POST",
+        body: {
+          app_id: args.app_id ?? defaultAppId,
+          cwd: args.cwd,
+          tool_name: args.tool_name ?? "mcp",
+        },
+      });
+    case "n0tune_get_project_context": {
+      const params = new URLSearchParams({
+        app_id: args.app_id ?? defaultAppId,
+      });
+      if (args.query) params.set("query", args.query);
+      return api(`/v1/projects/${encodeURIComponent(args.project_id)}/context?${params.toString()}`);
+    }
+    case "n0tune_create_handoff_capsule":
+      return api(`/v1/projects/${encodeURIComponent(args.project_id)}/handoffs`, {
+        method: "POST",
+        body: {
+          app_id: args.app_id ?? defaultAppId,
+          source_tool: args.source_tool,
+          target_tool: args.target_tool,
+          session_id: args.session_id,
+          title: args.title,
+          goal: args.goal,
+          current_state: args.current_state,
+          decisions: arrayArg(args.decisions),
+          files_changed: arrayArg(args.files_changed),
+          commands_run: arrayArg(args.commands_run),
+          errors_seen: arrayArg(args.errors_seen),
+          tests_run: arrayArg(args.tests_run),
+          next_steps: arrayArg(args.next_steps),
+          open_questions: arrayArg(args.open_questions),
+          warnings: arrayArg(args.warnings),
+          memory_refs: arrayArg(args.memory_refs),
+          doc_refs: arrayArg(args.doc_refs),
+        },
+      });
+    case "n0tune_get_latest_handoff": {
+      const params = new URLSearchParams({
+        app_id: args.app_id ?? defaultAppId,
+        limit: "1",
+      });
+      if (args.source_tool) params.set("source_tool", args.source_tool);
+      const rows = await api(
+        `/v1/projects/${encodeURIComponent(args.project_id)}/handoffs?${params.toString()}`,
+      );
+      return Array.isArray(rows) && rows.length ? rows[0] : null;
+    }
+    case "n0tune_list_handoffs": {
+      const params = new URLSearchParams({
+        app_id: args.app_id ?? defaultAppId,
+        limit: String(args.limit ?? 20),
+      });
+      if (args.source_tool) params.set("source_tool", args.source_tool);
+      return api(`/v1/projects/${encodeURIComponent(args.project_id)}/handoffs?${params.toString()}`);
+    }
+    case "n0tune_continue_from_handoff":
+      return api(`/v1/handoffs/${encodeURIComponent(args.handoff_id)}/continue-prompt`, {
+        method: "POST",
+        body: {
+          app_id: args.app_id ?? defaultAppId,
+          target_tool: args.target_tool,
+        },
+      });
+    case "n0tune_save_project_memory":
+      return api(`/v1/projects/${encodeURIComponent(args.project_id)}/memories`, {
+        method: "POST",
+        body: {
+          app_id: args.app_id ?? defaultAppId,
+          user_id: args.user_id ?? "mcp",
+          type: args.type ?? "project",
+          text: args.memory,
+          confidence: args.confidence ?? 0.86,
+        },
+      });
+    case "n0tune_search_project_memory": {
+      const params = new URLSearchParams({
+        app_id: args.app_id ?? defaultAppId,
+        q: args.query,
+        limit: String(args.limit ?? 10),
+      });
+      return api(`/v1/projects/${encodeURIComponent(args.project_id)}/memories?${params.toString()}`);
+    }
     default:
       throw new Error(`Unknown N0Tune MCP tool: ${name}`);
   }
 }
 
 async function api(path, init = {}) {
+  assertLocalMcpUrl();
   const headers = { "Content-Type": "application/json" };
   if (apiKey) {
     headers["X-N0Tune-API-Key"] = apiKey;
@@ -258,6 +468,18 @@ async function api(path, init = {}) {
     throw new Error(JSON.stringify(body));
   }
   return body;
+}
+
+function arrayArg(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function assertLocalMcpUrl() {
+  if (process.env.N0TUNE_MCP_ALLOW_REMOTE === "1") return;
+  const parsed = new URL(apiBaseUrl);
+  const host = parsed.hostname.toLowerCase();
+  if (["localhost", "127.0.0.1", "::1"].includes(host)) return;
+  throw new Error("N0Tune MCP is local-only by default. Set N0TUNE_MCP_ALLOW_REMOTE=1 to opt into remote Gateway access.");
 }
 
 function write(message) {

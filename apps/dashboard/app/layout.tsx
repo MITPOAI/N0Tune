@@ -3,7 +3,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "N0Tune",
-  description: "Personal AI runtime — context-tune any model with local memory.",
+  description:
+    "Personal AI runtime - context-tune any model with local memory.",
   icons: {
     icon: [{ url: "/favicon.png", type: "image/png", sizes: "32x32" }],
     apple: [{ url: "/favicon.png" }],
@@ -13,7 +14,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#18130c",
+  themeColor: "#070A12",
 };
 
 export default function RootLayout({

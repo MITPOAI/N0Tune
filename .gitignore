@@ -15,6 +15,12 @@ local-secrets/
 # Claude / agent harness state — never commit
 .claude/
 
+# N0Tune local project context. Commit project.example.json only when a
+# repository explicitly wants a shareable template.
+.n0tune/*
+!.n0tune/
+!.n0tune/project.example.json
+
 # Python
 __pycache__/
 *.py[cod]

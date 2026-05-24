@@ -1,6 +1,219 @@
 # Changelog
 
+## Unreleased
+
+- Reframed N0Tune around cross-tool project context: "Keep context across
+  Claude, Codex, Cursor, and every AI tool."
+- Added project detection, project tools, sessions, and Handoff Capsule
+  models plus migration `20260524_0005_project_context`.
+- Added project-context API routes for detect, context, project memory,
+  sessions, handoffs, continuation prompts, and archive.
+- Added CLI commands for `project`, `session`, `handoff`, project memory, and
+  project context preview.
+- Added MCP project-context and handoff tools.
+- Updated dashboard Command Center, Sessions, Handoff Capsules, and MCP pages
+  to reflect live project context.
+- Added cross-tool project context, handoff, MCP, CLI, dashboard, and
+  dogfooding docs.
+
 All notable changes to N0Tune will be documented here.
+
+## 0.1.7 - 2026-05-23
+
+Codex follow-up on the v0.1.6 dashboard handoff.
+
+### Added
+
+- Mobile dashboard bottom navigation with a compact drawer below 768 px.
+  Primary destinations stay one tap away and the full sidebar opens as a
+  bottom sheet with 44 px+ touch targets.
+- Desktop Tauri release check against
+  `https://api.github.com/repos/MITPOAI/N0Tune/releases/latest`. The Rust
+  side compares the latest GitHub release tag with the bundled Cargo
+  version and emits `n0tune://update-available`; the renderer surfaces a
+  footer update link without auto-downloading anything.
+- AppShell render error boundary plus visible fetch error states for
+  dashboard refreshes and action-specific Gateway calls.
+
+### Changed
+
+- Command Center concept-detail polish: companion mascot bubble now uses
+  a soft glow without an inner border, inner stat tiles stay transparent
+  with a 1 px line, health/arc strokes are slimmer, pressure bars are 6 px,
+  and chips use soft fills without visible borders.
+- Direct `Concept.png` follow-up: the Companion card now uses the
+  concept's desktop horizontal mascot/text composition while stacking on
+  mobile, and the Command Center waits for wider desktop space before
+  forcing three-column card rows.
+- Memoized Command Center derived state (`companionMood`,
+  `contextHealthBreakdown`, and `aggregateRuns`) so those calculations do
+  not rerun on unrelated renders. `memoryQuality` remains memoized in the
+  Memory Library.
+
+### Fixed
+
+- Dashboard refresh errors are de-duplicated by request scope, so repeated
+  failed syncs no longer stack the same visible error state.
+
+## 0.1.6 - 2026-05-23
+
+A dashboard redesign pass. UI-0 (audit) and UI-1 (design system + AppShell +
+Command Center) already shipped in v0.1.5; this release completes UI-2
+through UI-7 across all twelve pages without faking any backend feature.
+
+### Added
+
+- **Command palette (⌘K)** in the topbar with fuzzy filtering across all 12
+  pages. Includes a stubbed notifications button labelled planned.
+- **Footer status bar** with docs/roadmap/contribute links, gateway origin,
+  and a live `system healthy` pill driven by `/health`.
+- **Sidebar version + GitHub footer** anchored at the bottom of the
+  navigation column.
+- **Adaptive companion mood** on Command Center — Ready / Learning /
+  Watching / Needs setup / Checking — derived from real Gateway state and
+  the latest context preview, not a hardcoded "Ready".
+- **Memory Library shelves as first-class filters.** Eight chips
+  (All / Preferences / Project decisions / Coding style / Current goals /
+  Archived / Expired / Low confidence) drive the visible list.
+- **Semantic memory search** wired to `GET /v1/memories?q=` with a clear-
+  search action.
+- **Memory Quality panel** — counts low-confidence, never-confirmed,
+  expiring-soon (< 7 days), and duplicate-text memories.
+- **Sessions token danger meter** — Safe / Watch / Danger / Critical bands
+  computed from peak compiled tokens across context runs. Honest 8k
+  reference budget; not a fake provider limit.
+- **Per-run detail panel** on Sessions — selected memories, chunks, and
+  style snapshot for any context_run row.
+- **Aggregate session stats** — total tokens, average per run, tokens
+  saved, cache hit rate.
+- **Handoff Capsules planned page** — full example capsule JSON with copy
+  button, planned endpoint list, planned MCP tool list, and a section
+  explaining what ships when `/v1/handoffs` lands.
+- **MCP & Plugins copy-config blocks** for Claude Desktop,
+  Claude Code (one-liner), Cursor, and Codex CLI — every block uses the
+  dashboard's current `apiBaseUrl`, `appId`, and `userId` so the snippet
+  works after restart.
+- **MCP gateway test button** that hits `/health` and reports whether the
+  Gateway the MCP server reads from is reachable.
+- **Provider cards on Models** with wire shape, routing role, privacy
+  note, and the real `N0TUNE_PROVIDER_*` env vars each provider needs
+  today. The dashboard-key UI stays clearly Planned.
+- **Settings page** with workspace identity, theme switch (data-theme
+  attribute), reduced-motion toggle (data-motion override), demo-data
+  label switch, memory export (`GET /v1/memories/export` → downloadable
+  JSON), and developer/about cards.
+- **Deployment-mode detection** in the topbar — green "Local" pill when
+  the Gateway is on `localhost` / `127.0.0.1` / private IP / `.local`,
+  blue "Self-hosted" when it's an internal hostname, neutral "Custom
+  endpoint" otherwise.
+- **Deployment card on Settings** showing the detected mode plus the
+  `docker compose up -d --wait` and SQLite-fallback commands as copy
+  blocks, both with a one-click copy button. Explicit "open source under
+  MIT, zero telemetry, memories stay on the Gateway you control" line.
+- **Global ⌘K / Ctrl+K keyboard shortcut** opens the command palette;
+  Escape closes it.
+
+### Second-pass additions (companion + missing shelves + memory edits)
+
+- **Companion identity** — give your N0Tune companion a name (default
+  `N0va`) and import a custom avatar (PNG/JPG/SVG/WebP ≤ 1 MB). Stored
+  in `localStorage` only (`n0tune.companion.name`,
+  `n0tune.companion.avatar`); nothing is uploaded to the Gateway. Settings
+  → Companion has the form; Command Center renders the chosen name and
+  avatar in the hero card.
+- **Companion gamification badges** on the Command Center hero — derived
+  from real state, not childish. "No secrets stored", "First memory · N",
+  "Knowledge indexed · N", "Active runtime", "Cache warming".
+- **All 11 shelves from the original brief** — added Session Summaries
+  (type=summary), File Knowledge (type=file), MCP Handoffs (type=handoff),
+  Security Notes (type=security), and Conflicted (state=conflicted /
+  state=deprecated / has `replaced_by_memory_id`). Plus All and Low
+  confidence carry over, making 13 chips total.
+- **Memory edit action** — inline textarea + Save/Cancel hits
+  `PATCH /v1/memories/{id}`. Memory card now also shows a derived label
+  (`type · date`) and `source: source_message_id`. The brief's "related
+  session" remains mapped to `source_message_id` until the sessions
+  backend ships a richer link.
+- **MCP "Send test memory" button** — POSTs a tagged memory directly to
+  `/v1/memories` so you can verify the dashboard ↔ Gateway round-trip
+  without a separate curl. Next: search for the memory via
+  `n0tune_search_memories` from Claude/Cursor to close the loop.
+
+### Bug fixed: e2e regression from useEffect overwriting input fills
+
+The user_id and app_id initialisation moved from a post-mount useEffect to
+a `useState` lazy initializer that reads localStorage during the very
+first render. The previous shape allowed Playwright's `fill()` to race
+against the useEffect, occasionally restoring a stale `localStorage`
+value over the test's typed value. Full e2e now runs 5/5 in 18.5 s
+(down from 41.7 s — fewer redundant refetches as well).
+
+### Honesty pass on "Live vs Planned"
+
+N0Tune is open source and the user owns the deployment (`docker compose`
+or SQLite fallback). Some "Planned" labels from the first cut conflated
+*capability missing* with *dashboard-form missing* — fixed now:
+
+- **Models page** is now `Live · env config` with a secondary
+  `In-dashboard key form planned` badge. The provider router supports
+  openai-compatible, anthropic, and gemini wire shapes today — set
+  `N0TUNE_PROVIDER_*` env vars before `docker compose up`. Each provider
+  card has a Copy button for its env vars.
+- Models nav status flipped from `planned` → `live`.
+
+Still genuinely Planned (needs backend code, not just a form):
+
+- `handoff_capsules` table + `/v1/handoffs` endpoints + 3 MCP tools.
+- Full session-summary endpoint + summarize-now action.
+- Live MCP handshake from the dashboard (stdio servers boot when their
+  client launches them).
+
+### Changed
+
+- The four "planned" pages (Sessions, Handoff, Models, Settings) now own
+  their hero card and content; the temporary `PlannedShell` wrapper was
+  removed because it forced the same uninformative layout on every
+  planned page.
+- Topbar now shows live memory / docs / cache counts as quick context
+  pills alongside health/status.
+- Dashboard CSS gained `.danger-meter`, `.copy-block`, `.chip`, and
+  `.palette-*` primitives; the sidebar is now a flex column so the
+  GitHub + version footer can pin to the bottom.
+- `data-motion="reduced"` on `:root` now mirrors the existing
+  `prefers-reduced-motion` media query so the Settings toggle can
+  override the OS preference.
+
+### Verified
+
+- `npm run lint` clean (0 warnings, eslint --max-warnings=0).
+- `npm run typecheck` clean.
+- `npm test` (vitest) — 1/1 passes.
+- `npm run build` — production bundle 24.8 kB page / 127 kB First Load JS.
+- `next dev` boots in ~1.6 s on port 3001.
+- Dogfooded via `mcp__n0tune__n0tune_alignment_check` (phase UI-2): aligned,
+  risk_level=low, no issues. Persona shell read via `n0tune_get_persona`.
+- E2E selector audit: all Playwright dashboard.spec.ts selectors
+  (Refresh, App ID, User ID, Memory Library/Files/Command Center/Context
+  Lab/Cache nav buttons, Save memory, Update style profile, Index document,
+  Compile context, Selected docs/memories, Trace: selected, Seed demo,
+  Clear cache, Cache is empty) preserved.
+
+### What is real today vs planned
+
+| Surface          | Status   | Reality                                                                             |
+| ---------------- | -------- | ----------------------------------------------------------------------------------- |
+| Command Center   | Live     | Health, memory/doc/cache stats, context preview, recent runs, adaptive companion    |
+| Context Lab      | Live     | Two-user `/v1/context/preview` comparison, no fake LLM answer                       |
+| Memory Library   | Live     | CRUD + shelves + semantic search via `?q=` + quality heuristics                     |
+| Sessions         | Partial  | Built on context_runs; full session summary endpoint planned                        |
+| Handoff          | Planned  | Read-only — `/v1/handoffs` and three MCP tools not yet implemented                  |
+| Models           | Planned  | Env-var config today; dashboard key UI planned                                      |
+| Files            | Live     | Index + list documents and chunks; chunk-level injection-risk shown                 |
+| MCP & Plugins    | Partial  | Stdio MCP server ships; copy-config blocks live; in-dashboard handshake planned     |
+| Cache            | Live     | Semantic cache list / clear; hit rate from context_runs                             |
+| Security         | Live     | Live secret + injection + scope status; provider-key UI still planned               |
+| Audit Logs       | Live     | Owner/admin API key required                                                        |
+| Settings         | Live     | Workspace, theme, motion, demo labels, memory export, developer info                |
 
 ## 0.1.5 - 2026-05-18
 
@@ -43,7 +256,7 @@ notes in [docs/releases/v0.1.5.md](docs/releases/v0.1.5.md).
   shadow strengthened slightly to match.
 - **Rate-limit backend contract** — `hit()` now returns a
   `RateLimitDecision` dataclass with `allowed / remaining /
-  retry_after / reset_at` instead of a `(bool, int)` tuple. Backwards-
+retry_after / reset_at` instead of a `(bool, int)` tuple. Backwards-
   incompatible only for code that imported the internal API.
 
 ### Smoke at tag time
@@ -214,7 +427,7 @@ changes is the **headline** (back to context-tuning), the
 - New `.github/workflows/release.yml` builds the Tauri bundle on
   windows-latest, macos-14 (arm64), macos-13 (x64), and ubuntu-22.04 on
   every `v*` tag push, then uploads every `.exe / .msi / .dmg /
-  .AppImage / .deb` to the matching GitHub Release. v0.1.2 is the first
+.AppImage / .deb` to the matching GitHub Release. v0.1.2 is the first
   release where pre-built installers are downloadable.
 
 ## 0.1.1 - 2026-05-17
@@ -308,6 +521,11 @@ tool. Full release notes in [docs/releases/v0.1.0.md](docs/releases/v0.1.0.md).
 
 ### Added
 
+- Dashboard UI-0/UI-1 redesign:
+  - Added `docs/ui-redesign.md` with the dashboard audit, backend feature audit, page map, design tokens, component system, responsive rules, effect rules, Handoff Capsule backend proposal, and phased UI plan.
+  - Replaced the old dashboard shell with a liquid-glass AppShell, grouped navigation, live/partial/planned status labels, and a redesigned Command Center.
+  - Added reusable dashboard primitives: `GlassCard`, `StatCard`, `StatusPill`, `EmptyState`, `LoadingSkeleton`, `ErrorState`, `SectionHeader`, and `TokenSavingsMeter`.
+  - Kept live Gateway-backed flows for Context Lab, memory, style, documents, cache, security, and audit logs while clearly labeling Sessions, Handoff, Models, and Settings as planned.
 - Phase B Core extraction:
   - Added installable Python package `packages/core` as `n0tune-core`.
   - Core now owns shared token estimation, stable hashing, deterministic hash embeddings, cosine similarity, BM25 lexical scoring, prompt-injection scanning, secret detection, context rendering, naive-token baseline estimation, hybrid score blending, and Protocol interface contracts.
